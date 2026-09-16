@@ -1,6 +1,13 @@
 import Phaser from 'phaser';
 import type { AgentDef, AgentStatus } from '../data/agents';
-import { IDLE_LINES, WAITING_LINES, WORKING_LINES, WORKING_LINES_BY_ID } from '../data/agents';
+import {
+  IDLE_LINES,
+  IDLE_LINES_BY_ID,
+  WAITING_LINES,
+  WAITING_LINES_BY_ID,
+  WORKING_LINES,
+  WORKING_LINES_BY_ID,
+} from '../data/agents';
 import { TILE } from '../utils/constants';
 import type { Grid } from '../systems/Pathfinding';
 import { findPath, randomWalkableTile } from '../systems/Pathfinding';
@@ -148,6 +155,11 @@ export class Agent extends Phaser.GameObjects.Container {
     this.clearBubble();
   }
 
+  /** Force a speech bubble (used by the Chief's floor reactions). */
+  say(text: string): void {
+    this.showBubble(text);
+  }
+
   applyStatus(status: AgentStatus, immediate = false): void {
     this.status = status;
     this.path = [];
@@ -173,7 +185,7 @@ export class Agent extends Phaser.GameObjects.Container {
       }
     } else if (status === 'waiting') {
       this.showIdleFrame();
-      this.showBubble(Phaser.Utils.Array.GetRandom(WAITING_LINES));
+      this.showBubble(Phaser.Utils.Array.GetRandom(this.waitingLines()));
       // Shuffle soon so waiting agents aren't frozen
       this.idleTimer = 1.2 + Math.random() * 2;
     } else {
@@ -231,7 +243,7 @@ export class Agent extends Phaser.GameObjects.Container {
           y1: Math.min(19, t.row + 2),
         });
         if (near) this.walkTo(near.col, near.row);
-        this.showBubble(Phaser.Utils.Array.GetRandom(WAITING_LINES));
+        this.showBubble(Phaser.Utils.Array.GetRandom(this.waitingLines()));
         // Noticeable shuffle every ~3–7s
         this.idleTimer = 3 + Math.random() * 4;
       }
@@ -247,10 +259,10 @@ export class Agent extends Phaser.GameObjects.Container {
       this.idleTimer = 2 + Math.random() * 3;
       // Chance of an idle mutter when starting a wander
       if (Math.random() < 0.35) {
-        this.showBubble(Phaser.Utils.Array.GetRandom(IDLE_LINES));
+        this.showBubble(Phaser.Utils.Array.GetRandom(this.idleLines()));
       }
     } else {
-      this.tickOccasionalBubble(dt, IDLE_LINES, 7, 12);
+      this.tickOccasionalBubble(dt, this.idleLines(), 7, 12);
     }
   }
 
@@ -275,6 +287,14 @@ export class Agent extends Phaser.GameObjects.Container {
   /** Working bubble lines: per-agent override, then id map, then shared pool. */
   private workingLines(): string[] {
     return this.def.workingLines ?? WORKING_LINES_BY_ID[this.def.id] ?? WORKING_LINES;
+  }
+
+  private idleLines(): string[] {
+    return IDLE_LINES_BY_ID[this.def.id] ?? IDLE_LINES;
+  }
+
+  private waitingLines(): string[] {
+    return WAITING_LINES_BY_ID[this.def.id] ?? WAITING_LINES;
   }
 
   private sitAndType(): void {

@@ -285,6 +285,36 @@ export const WORKING_LINES_BY_ID: Record<string, string[]> = {
   swe: ['Shipping a pixel…', 'Fixing the pathfinding…', 'Polishing the desk…', 'Rebuilding the tiles…'],
 };
 
+/** Role-specific idle lines, keyed by agent id. */
+export const IDLE_LINES_BY_ID: Record<string, string[]> = {
+  cos: ['Strolling the floor…', 'Reading the board…', 'Coffee first…', 'Taking it in…'],
+  github: ['Stretching…', 'Coffee run…', 'Off the clock…', 'Staring at the ceiling…'],
+  linkedin: ['Sketching idly…', 'Stepping back…', 'Inspiration hunt…', 'Palette daydream…'],
+  x: ['Checking the feed…', 'Battery low…', 'Chilling…', 'Refreshing…'],
+  reddit: ['Pacing…', 'Cold brew…', 'Gym break…', 'Pitching air…'],
+  gmail: ['Inbox zero, finally', 'Filing things…', 'Desk snack…', 'Breathing room…'],
+  travel: ['Planning a real trip…', 'Looking out the window…', 'Recharging…', 'Coffee run…'],
+  deal: ['Browsing deals…', 'Window shopping…', 'Daydreaming a campaign…', 'Stretching…'],
+  flight: ['Clearing the radar…', 'Sky watching…', 'Idle throttle…', 'Fueling up…'],
+  optimizer: ['Pondering the queue…', 'Idle loop…', 'Coffee run…', 'Rebalancing, mentally'],
+  swe: ['Admiring the tiles…', 'Polishing a pixel…', 'AFK, refilling', 'Stretching…'],
+};
+
+/** Role-specific waiting lines, keyed by agent id. */
+export const WAITING_LINES_BY_ID: Record<string, string[]> = {
+  cos: ['Waiting on inputs…', 'Need the weekly numbers…', 'Awaiting sign-off…', 'Ping me when ready…'],
+  github: ['Blocked on review…', 'CI still red…', 'Waiting on the merge…', 'Need a re-run…'],
+  linkedin: ['Waiting on copy…', 'Need the assets…', 'Awaiting feedback…', 'Blocked on the brief…'],
+  x: ['Queued three replies…', 'Waiting on escalation…', 'Draft pending…', 'Escalating…'],
+  reddit: ['Waiting on the lead…', 'Pipeline paused…', 'Need a decision…', 'Follow-up pending…'],
+  gmail: ['Two drafts pending…', 'Awaiting a reply…', 'Scheduling conflict…', 'Inbox waiting…'],
+  travel: ['Awaiting the data…', 'Need the options…', 'Report pending…', 'Waiting on sources…'],
+  deal: ['Waiting on pricing…', 'Renewal window…', 'Need the numbers…', 'Awaiting approval…'],
+  flight: ['Signal watch active…', 'Schedule pending…', 'Waiting on the alert…', 'Scanning…'],
+  optimizer: ['Queue stalled…', 'Waiting on routing…', 'Need the metrics…', 'Blocked on the flow…'],
+  swe: ['Waiting on the build…', 'Need a review…', 'Blocked on assets…', 'LGTM pending…'],
+};
+
 export const TASK_POOL = [
   'Processed overnight queue',
   'Synced calendars',

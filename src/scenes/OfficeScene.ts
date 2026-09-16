@@ -39,6 +39,7 @@ export class OfficeScene extends Phaser.Scene {
   private cosOnFloor = false;
   private demoMode = false;
   private demoTimer: Phaser.Time.TimerEvent | null = null;
+  private chiefReactionTimer = 14 + Math.random() * 8;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: {
     W: Phaser.Input.Keyboard.Key;
@@ -96,6 +97,7 @@ export class OfficeScene extends Phaser.Scene {
     const dt = Math.min(dtMs / 1000, 0.05);
     this.panCamera(dt);
     for (const a of this.agents) a.updateAgent(dt);
+    this.chiefReact(dt);
   }
 
   private buildMap(): TileKind[][] {
@@ -296,14 +298,26 @@ export class OfficeScene extends Phaser.Scene {
       this.add.image(x, y, 'desk-boss').setOrigin(0.5, 1).setDepth(5);
     }
 
-    // --- Agent desks: mix monitor / laptop + stools ---
-    let deskIdx = 0;
+    // --- Agent desks: per-role furniture ---
+    const DESK_BY_ID: Record<string, string> = {
+      github: 'desk',
+      gmail: 'desk',
+      flight: 'desk',
+      optimizer: 'desk',
+      swe: 'desk',
+      linkedin: 'desk-laptop',
+      x: 'desk-laptop',
+      reddit: 'desk-laptop',
+      travel: 'desk-laptop',
+      deal: 'desk-laptop',
+    };
+    const CHAIR_IDS = new Set(['linkedin', 'deal', 'reddit']);
     for (const a of AGENTS) {
       if (a.isChief) continue;
-      const deskKey = deskIdx % 2 === 0 ? 'desk' : 'desk-laptop';
-      deskIdx += 1;
+      const deskKey = DESK_BY_ID[a.id] ?? 'desk';
+      const seatKey = CHAIR_IDS.has(a.id) ? 'chair' : 'stool';
       placeDesk(a.desk.col, a.desk.row, deskKey);
-      placeSeat(a.desk.col, a.desk.row, 'stool');
+      placeSeat(a.desk.col, a.desk.row, seatKey);
       const label = a.name.split(' ')[0];
       const hex = '#' + a.color.toString(16).padStart(6, '0');
       const lx = a.desk.col * TILE + TILE / 2;
@@ -520,6 +534,28 @@ export class OfficeScene extends Phaser.Scene {
       a.applyStatus(next);
     }
     if (this.selected) this.selectAgent(this.selected);
+  }
+
+  /** Chief occasionally calls out idle or waiting agents from the boss desk. */
+  private chiefReact(dt: number): void {
+    const chief = this.agents.find((a) => a.def.isChief);
+    if (!chief || chief.status !== 'working' || chief.location !== 'office') return;
+    this.chiefReactionTimer -= dt;
+    if (this.chiefReactionTimer > 0) return;
+    this.chiefReactionTimer = 16 + Math.random() * 10;
+    const idlers = this.agents.filter((a) => !a.def.isChief && a.status === 'idle');
+    const waiters = this.agents.filter((a) => !a.def.isChief && a.status === 'waiting');
+    let line: string;
+    if (idlers.length) {
+      const target = idlers[Math.floor(Math.random() * idlers.length)];
+      line = `${target.def.name}, back to work.`;
+    } else if (waiters.length) {
+      const target = waiters[Math.floor(Math.random() * waiters.length)];
+      line = `${target.def.name}, what is the holdup?`;
+    } else {
+      line = 'Floor is humming. Good work.';
+    }
+    chief.say(line);
   }
 
   /** Patrol (floor) vs posted at boss desk (office). Default = desk. */
