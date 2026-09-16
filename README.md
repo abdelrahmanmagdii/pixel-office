@@ -4,15 +4,15 @@ Interactive pixel-art agent floor (Phaser + Vite).
 
 ## Open this URL
 
-**https://abdelrahmanmagdii.github.io/<repo>/**
+**https://abdelrahmanmagdii.github.io/pixel-office/**
 
-Replace `<repo>` with the GitHub repository name once Pages is enabled. The shared live URL is the main way to use this — not a Grok skill or template install.
+Replace `pixel-office` with the GitHub repository name once Pages is enabled. The shared live URL is the main way to use this — not a Grok skill or template install.
 
 ## Local (optional)
 
 ```bash
-git clone https://github.com/abdelrahmanmagdii/<repo>.git
-cd <repo>
+git clone https://github.com/abdelrahmanmagdii/pixel-office.git
+cd pixel-office
 npm install
 npm run dev
 ```
