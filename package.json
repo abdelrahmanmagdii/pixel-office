@@ -1,0 +1,20 @@
+{
+  "name": "grok-bot-pixel-office",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Pixel Office — interactive agent floor (Phaser + Vite)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "map-bots": "node scripts/map-bots.mjs"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  },
+  "dependencies": {
+    "phaser": "^4.2.1"
+  }
+}

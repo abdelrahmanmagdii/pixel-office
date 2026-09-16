@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pixel Office</title>
+  </head>
+  <body>
+    <div id="app">
+      <header id="topbar">
+        <div class="brand">
+          <span class="logo">■</span>
+          <div>
+            <h1>Pixel Office</h1>
+            <p>Your agent floor — click an agent for details</p>
+          </div>
+        </div>
+        <div id="demo-controls">
+          <button id="btn-randomize" type="button">Randomize busy states</button>
+          <button id="btn-toggle-cos" type="button">Toggle CoS: Desk</button>
+        </div>
+      </header>
+      <main id="stage-wrap">
+        <div id="game-container"></div>
+        <aside id="agent-panel" class="hidden" aria-live="polite">
+          <button id="panel-close" type="button" aria-label="Close">×</button>
+          <div id="panel-swatch"></div>
+          <h2 id="panel-name">—</h2>
+          <p id="panel-role" class="muted">—</p>
+          <dl>
+            <div><dt>Id</dt><dd id="panel-id">—</dd></div>
+            <div><dt>Status</dt><dd id="panel-status">—</dd></div>
+            <div><dt>Location</dt><dd id="panel-location">—</dd></div>
+            <div><dt>Last task</dt><dd id="panel-task">—</dd></div>
+          </dl>
+          <p id="panel-tip" class="muted">Hover for highlight · click bubble to dismiss</p>
+        </aside>
+      </main>
+      <footer id="hint">
+        WASD / arrows pan · scroll zoom · hover/click agent · click bubble or floor to dismiss · demo buttons above
+      </footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

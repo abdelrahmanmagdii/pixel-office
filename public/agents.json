@@ -1,0 +1,106 @@
+{
+  "officeTitle": "Pixel Office",
+  "subtitle": "Your agent floor — click an agent for details",
+  "agents": [
+    {
+      "id": "cos",
+      "name": "Chief",
+      "role": "Coordinates the floor and priorities",
+      "color": "#f59e0b",
+      "desk": { "col": 14, "row": 17 },
+      "isChief": true,
+      "lastTask": "Synced weekly team priorities",
+      "status": "working"
+    },
+    {
+      "id": "github",
+      "name": "Engineer",
+      "role": "Builds features and keeps CI healthy",
+      "color": "#60a5fa",
+      "desk": { "col": 8, "row": 6 },
+      "lastTask": "Triaged open pull requests",
+      "status": "working"
+    },
+    {
+      "id": "linkedin",
+      "name": "Designer",
+      "role": "UI polish, layouts, and visual craft",
+      "color": "#38bdf8",
+      "desk": { "col": 12, "row": 6 },
+      "lastTask": "Refined desk-label hierarchy",
+      "status": "idle"
+    },
+    {
+      "id": "x",
+      "name": "Support",
+      "role": "Answers questions and unblocks teammates",
+      "color": "#9ca3af",
+      "desk": { "col": 16, "row": 6 },
+      "lastTask": "Queued three support replies",
+      "status": "waiting"
+    },
+    {
+      "id": "reddit",
+      "name": "Sales",
+      "role": "Outreach, demos, and pipeline follow-ups",
+      "color": "#fb923c",
+      "desk": { "col": 20, "row": 6 },
+      "lastTask": "Waiting on tone check for outreach",
+      "status": "waiting"
+    },
+    {
+      "id": "gmail",
+      "name": "Ops",
+      "role": "Inbox triage, scheduling, and logistics",
+      "color": "#f87171",
+      "desk": { "col": 8, "row": 10 },
+      "lastTask": "Cleared shared inbox; two drafts pending",
+      "status": "working"
+    },
+    {
+      "id": "travel",
+      "name": "Analyst",
+      "role": "Research, reports, and itinerary planning",
+      "color": "#34d399",
+      "desk": { "col": 12, "row": 10 },
+      "lastTask": "Compiled weekly options brief",
+      "status": "idle"
+    },
+    {
+      "id": "deal",
+      "name": "Marketing",
+      "role": "Campaigns, copy, and opportunity spotting",
+      "color": "#a78bfa",
+      "desk": { "col": 16, "row": 10 },
+      "lastTask": "Flagged a renewal window for review",
+      "status": "working"
+    },
+    {
+      "id": "flight",
+      "name": "Research",
+      "role": "Monitors signals and schedule changes",
+      "color": "#2dd4bf",
+      "desk": { "col": 20, "row": 10 },
+      "lastTask": "Alert: interesting signal next Thursday",
+      "status": "idle"
+    },
+    {
+      "id": "optimizer",
+      "name": "Product",
+      "role": "Tunes workflows, routing, and priorities",
+      "color": "#4ade80",
+      "desk": { "col": 8, "row": 14 },
+      "lastTask": "Tuned overnight queue routing",
+      "status": "working"
+    },
+    {
+      "id": "swe",
+      "name": "Builder",
+      "role": "Maintains this pixel office experience",
+      "color": "#f472b6",
+      "desk": { "col": 12, "row": 14 },
+      "lastTask": "Shipped desks and pathfinding",
+      "status": "idle"
+    }
+  ]
+}
