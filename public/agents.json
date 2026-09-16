@@ -34,7 +34,7 @@
       "id": "x",
       "name": "Support",
       "role": "Answers questions and unblocks teammates",
-      "color": "#9ca3af",
+      "color": "#71717a",
       "desk": { "col": 16, "row": 6 },
       "lastTask": "Queued three support replies",
       "status": "waiting"

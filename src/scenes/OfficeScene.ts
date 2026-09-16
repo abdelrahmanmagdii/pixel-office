@@ -23,6 +23,7 @@ export type PanelPayload = {
   lastTask: string;
   color: string;
   location: string;
+  isChief: boolean;
 };
 
 type UiHooks = {
@@ -36,6 +37,8 @@ export class OfficeScene extends Phaser.Scene {
   private selected: Agent | null = null;
   private hooks!: UiHooks;
   private cosOnFloor = false;
+  private demoMode = false;
+  private demoTimer: Phaser.Time.TimerEvent | null = null;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: {
     W: Phaser.Input.Keyboard.Key;
@@ -83,6 +86,9 @@ export class OfficeScene extends Phaser.Scene {
       randomizeBusy: () => this.randomizeBusy(),
       toggleCoS: () => this.toggleCoS(),
       isCoSOnFloor: () => this.cosOnFloor,
+      setStatus: (id: string, status: AgentStatus) => this.setStatus(id, status),
+      startDemo: () => this.startDemo(),
+      stopDemo: () => this.stopDemo(),
     };
   }
 
@@ -232,6 +238,32 @@ export class OfficeScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(2);
 
+    const zoneLabel = (col: number, row: number, label: string) => {
+      this.add
+        .text(col * TILE, row * TILE, label, {
+          fontFamily: 'monospace',
+          fontSize: '10px',
+          color: '#78716c',
+        })
+        .setOrigin(0.5)
+        .setDepth(2)
+        .setAlpha(0.6);
+    };
+    zoneLabel(14, 5, 'ENGINEERING');
+    zoneLabel(14, 9, 'OPERATIONS');
+    zoneLabel(14, 13, 'PRODUCT');
+
+    // STARBASE poster on the north-wall whiteboard
+    this.add
+      .text(14 * TILE + 16, 1 * TILE + 20, '★ STARBASE 2026', {
+        fontFamily: 'monospace',
+        fontSize: '9px',
+        color: '#fbbf24',
+      })
+      .setOrigin(0.5)
+      .setDepth(7)
+      .setAlpha(0.95);
+
     this.add
       .text(BOSS_DESK.standCol * TILE + TILE / 2, (BOSS_DESK.standRow - 3) * TILE, 'CHIEF', {
         fontFamily: 'monospace',
@@ -376,6 +408,7 @@ export class OfficeScene extends Phaser.Scene {
           ? 'Boss desk'
           : 'Floor patrol'
         : 'Main floor',
+      isChief: Boolean(agent.def.isChief),
     });
   }
 
@@ -411,6 +444,7 @@ export class OfficeScene extends Phaser.Scene {
     let lastY = 0;
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (this.demoMode) this.stopDemo();
       if (p.middleButtonDown() || (p.leftButtonDown() && p.event.shiftKey)) {
         dragging = true;
         lastX = p.x;
@@ -420,8 +454,10 @@ export class OfficeScene extends Phaser.Scene {
       if (!p.leftButtonDown()) return;
 
       const world = this.cameras.main.getWorldPoint(p.x, p.y);
+      // Scale click radius with zoom, so targets stay clickable when zoomed out
+      const clickRadius = Phaser.Math.Clamp(28 / this.cameras.main.zoom, 16, 42);
       let best: Agent | null = null;
-      let bestDist = 28;
+      let bestDist = clickRadius;
       for (const a of this.agents) {
         const d = Phaser.Math.Distance.Between(world.x, world.y, a.x, a.y - 6);
         if (d < bestDist) {
@@ -430,9 +466,11 @@ export class OfficeScene extends Phaser.Scene {
         }
       }
       if (best) {
-        // Click agent: dismiss their bubble, still open sidebar
+        // Second click on the Chief toggles Desk <-> Patrol
+        const wasSelected = this.selected === best;
         best.dismissBubble();
         this.selectAgent(best);
+        if (wasSelected && best.def.isChief) this.toggleCoS();
         return;
       }
 
@@ -490,10 +528,59 @@ export class OfficeScene extends Phaser.Scene {
     this.syncCoSButtonLabel();
     return this.cosOnFloor;
   }
+
+  /** Set a single agent's status from the panel. */
+  setStatus(id: string, status: AgentStatus): void {
+    const a = this.agents.find((x) => x.def.id === id);
+    if (!a) return;
+    a.lastTask = TASK_POOL[Math.floor(Math.random() * TASK_POOL.length)];
+    a.applyStatus(status);
+    if (this.selected === a) this.selectAgent(a);
+  }
+
+  /** Cinematic camera tour for demos and screen recordings. */
+  startDemo(): void {
+    if (this.demoMode) return;
+    this.demoMode = true;
+    const cam = this.cameras.main;
+    const spots = [
+      { x: 464, y: 560, zoom: 1.9 },
+      { x: 480, y: 236, zoom: 1.5 },
+      { x: 470, y: 380, zoom: 1.3 },
+      { x: 784, y: 480, zoom: 2 },
+      { x: 496, y: 330, zoom: 0.72 },
+      { x: 496, y: 304, zoom: 1.4 },
+    ];
+    const step = (i: number): void => {
+      if (!this.demoMode) return;
+      if (i >= spots.length) {
+        this.demoMode = false;
+        window.dispatchEvent(new Event('pixel-office:demo-end'));
+        return;
+      }
+      const s = spots[i];
+      cam.pan(s.x, s.y, 1800, 'Sine.easeInOut');
+      cam.zoomTo(s.zoom, 1800, 'Sine.easeInOut');
+      this.demoTimer = this.time.delayedCall(2100, () => step(i + 1));
+    };
+    step(0);
+  }
+
+  stopDemo(): void {
+    this.demoMode = false;
+    if (this.demoTimer) {
+      this.demoTimer.remove();
+      this.demoTimer = null;
+    }
+    window.dispatchEvent(new Event('pixel-office:demo-end'));
+  }
 }
 
 export type PixelOfficeApi = {
   randomizeBusy: () => void;
   toggleCoS: () => boolean;
   isCoSOnFloor: () => boolean;
+  setStatus: (id: string, status: AgentStatus) => void;
+  startDemo: () => void;
+  stopDemo: () => void;
 };

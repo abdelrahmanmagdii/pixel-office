@@ -414,7 +414,7 @@ LOOKS = {
         "hair": (20, 20, 25, 255),
         "hair_style": "undercut",
         "shirt": (40, 42, 50, 255),
-        "shirt2": (220, 225, 235, 255),
+        "shirt2": (165, 170, 180, 255),
         "accent": (120, 80, 200, 255),
         "pants": PANTS_BLACK,
         "shoes": SHOES_WHITE,

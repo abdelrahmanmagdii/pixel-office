@@ -5,6 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pixel Office</title>
+    <meta name="description" content="A living pixel-art office for your Grok Bot agent team. Click, hover, and watch them work." />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Pixel Office — your Grok agent team, visualized" />
+    <meta property="og:description" content="A living pixel-art office for the Grok Bot agents on your floor. Click, hover, and watch them work." />
+    <meta property="og:image" content="https://abdelrahmanmagdii.github.io/pixel-office/og-image.png" />
+    <meta property="og:url" content="https://abdelrahmanmagdii.github.io/pixel-office/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Pixel Office — your Grok agent team, visualized" />
+    <meta name="twitter:description" content="A living pixel-art office for the Grok Bot agents on your floor." />
+    <meta name="twitter:image" content="https://abdelrahmanmagdii.github.io/pixel-office/og-image.png" />
   </head>
   <body>
     <div id="app">
@@ -18,6 +28,7 @@
         </div>
         <div id="demo-controls">
           <button id="btn-randomize" type="button">Randomize busy states</button>
+          <button id="btn-demo" type="button">Play tour</button>
           <button id="btn-toggle-cos" type="button">Toggle CoS: Desk</button>
         </div>
       </header>
@@ -34,6 +45,12 @@
             <div><dt>Location</dt><dd id="panel-location">—</dd></div>
             <div><dt>Last task</dt><dd id="panel-task">—</dd></div>
           </dl>
+          <div id="panel-actions">
+            <button type="button" class="status-btn" data-status="idle">Idle</button>
+            <button type="button" class="status-btn" data-status="working">Working</button>
+            <button type="button" class="status-btn" data-status="waiting">Waiting</button>
+            <button type="button" id="btn-panel-cos" class="hidden">Toggle CoS: Patrol</button>
+          </div>
           <p id="panel-tip" class="muted">Hover for highlight · click bubble to dismiss</p>
         </aside>
       </main>

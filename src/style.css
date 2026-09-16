@@ -177,6 +177,26 @@ html, body, #app {
 #panel-status.status-working { color: var(--busy); }
 #panel-status.status-waiting { color: var(--wait); }
 
+#panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.85rem;
+}
+#panel-actions button {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #243044;
+  color: var(--text);
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+#panel-actions button:hover { border-color: var(--accent2); }
+#panel-actions button.on { border-color: var(--accent); color: var(--accent); background: #16302a; }
+
 #hint {
   padding: 0.4rem 1rem;
   font-size: 0.72rem;

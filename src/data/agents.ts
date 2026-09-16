@@ -52,7 +52,7 @@ const FALLBACK_AGENTS: AgentDef[] = [
     id: 'x',
     name: 'Support',
     role: 'Answers questions and unblocks teammates',
-    color: 0x9ca3af,
+    color: 0x71717a,
     desk: { col: 16, row: 6 },
     lastTask: 'Queued three support replies',
     status: 'waiting',

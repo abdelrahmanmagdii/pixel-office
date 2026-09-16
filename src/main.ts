@@ -2,7 +2,8 @@ import './style.css';
 import Phaser from 'phaser';
 import { loadOfficeConfig, officeTitle, officeSubtitle } from './data/agents';
 import { OfficeScene } from './scenes/OfficeScene';
-import type { PanelPayload } from './scenes/OfficeScene';
+import type { PanelPayload, PixelOfficeApi } from './scenes/OfficeScene';
+import type { AgentStatus } from './data/agents';
 
 function applyChrome(): void {
   document.title = officeTitle;
@@ -10,6 +11,15 @@ function applyChrome(): void {
   const sub = document.querySelector('#topbar .brand p');
   if (h1) h1.textContent = officeTitle;
   if (sub) sub.textContent = officeSubtitle;
+}
+
+function pixelOfficeApi(): PixelOfficeApi | undefined {
+  return (window as unknown as { __pixelOffice?: PixelOfficeApi }).__pixelOffice;
+}
+
+function syncTopbarCoS(onFloor: boolean): void {
+  const btn = document.getElementById('btn-toggle-cos');
+  if (btn) btn.textContent = onFloor ? 'Toggle CoS: Patrol' : 'Toggle CoS: Desk';
 }
 
 function showPanel(payload: PanelPayload | null): void {
@@ -28,6 +38,23 @@ function showPanel(payload: PanelPayload | null): void {
   document.getElementById('panel-task')!.textContent = payload.lastTask;
   document.getElementById('panel-id')!.textContent = payload.id;
   (document.getElementById('panel-swatch') as HTMLElement).style.background = payload.color;
+
+  const api = pixelOfficeApi();
+  const btnCos = document.getElementById('btn-panel-cos')!;
+  btnCos.classList.toggle('hidden', !payload.isChief);
+  btnCos.textContent = api?.isCoSOnFloor?.() ? 'Toggle CoS: Desk' : 'Toggle CoS: Patrol';
+  btnCos.onclick = () => {
+    const onFloor = api?.toggleCoS() ?? false;
+    syncTopbarCoS(onFloor);
+  };
+
+  document.querySelectorAll<HTMLButtonElement>('#panel-actions .status-btn').forEach((btn) => {
+    const status = btn.dataset.status as AgentStatus;
+    btn.classList.toggle('on', status === payload.status);
+    btn.onclick = () => {
+      api?.setStatus(payload.id, status);
+    };
+  });
 }
 
 async function boot(): Promise<void> {
@@ -36,6 +63,7 @@ async function boot(): Promise<void> {
 
   const gameParent = document.getElementById('game-container')!;
   const btnRandomize = document.getElementById('btn-randomize')!;
+  const btnDemo = document.getElementById('btn-demo')!;
   const btnToggleCos = document.getElementById('btn-toggle-cos')!;
   const panelClose = document.getElementById('panel-close')!;
 
@@ -63,15 +91,29 @@ async function boot(): Promise<void> {
 
   panelClose.addEventListener('click', () => showPanel(null));
 
-  btnRandomize.addEventListener('click', () => {
-    const api = (window as unknown as { __pixelOffice?: { randomizeBusy: () => void } }).__pixelOffice;
-    api?.randomizeBusy();
+  btnRandomize.addEventListener('click', () => pixelOfficeApi()?.randomizeBusy());
+
+  btnDemo.addEventListener('click', () => {
+    const api = pixelOfficeApi();
+    if (!api) return;
+    if (btnDemo.dataset.mode === 'stop') {
+      api.stopDemo();
+      btnDemo.textContent = 'Play tour';
+      btnDemo.dataset.mode = '';
+      return;
+    }
+    btnDemo.textContent = 'Stop tour';
+    btnDemo.dataset.mode = 'stop';
+    api.startDemo();
+  });
+
+  window.addEventListener('pixel-office:demo-end', () => {
+    btnDemo.textContent = 'Play tour';
+    btnDemo.dataset.mode = '';
   });
 
   btnToggleCos.addEventListener('click', () => {
-    const api = (window as unknown as {
-      __pixelOffice?: { toggleCoS: () => boolean };
-    }).__pixelOffice;
+    const api = pixelOfficeApi();
     if (!api) return;
     const onFloor = api.toggleCoS();
     btnToggleCos.textContent = onFloor ? 'Toggle CoS: Patrol' : 'Toggle CoS: Desk';
