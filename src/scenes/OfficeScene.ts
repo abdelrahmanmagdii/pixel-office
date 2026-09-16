@@ -304,11 +304,16 @@ export class OfficeScene extends Phaser.Scene {
       deskIdx += 1;
       placeDesk(a.desk.col, a.desk.row, deskKey);
       placeSeat(a.desk.col, a.desk.row, 'stool');
+      const label = a.name.split(' ')[0];
+      const hex = '#' + a.color.toString(16).padStart(6, '0');
+      const lx = a.desk.col * TILE + TILE / 2;
+      const ly = (a.desk.row - 2) * TILE + 4;
+      this.add.rectangle(lx, ly - 4, 16, 3, a.color).setOrigin(0.5).setDepth(5);
       this.add
-        .text(a.desk.col * TILE + TILE / 2, (a.desk.row - 2) * TILE + 4, a.name.split(' ')[0], {
+        .text(lx, ly, label, {
           fontFamily: 'monospace',
           fontSize: '8px',
-          color: '#44403c',
+          color: hex,
         })
         .setOrigin(0.5, 0)
         .setDepth(6);

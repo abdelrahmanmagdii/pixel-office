@@ -11,6 +11,8 @@ export interface AgentDef {
   isChief?: boolean;
   lastTask: string;
   status: AgentStatus;
+  /** Role-specific lines for the working state. Falls back to a per-id map, then a shared pool. */
+  workingLines?: string[];
 }
 
 export interface OfficeConfig {
@@ -176,6 +178,9 @@ function parseAgent(raw: Record<string, unknown>, index: number): AgentDef | nul
     isChief: Boolean(raw.isChief),
     lastTask: typeof raw.lastTask === 'string' ? raw.lastTask : '',
     status: parseStatus(raw.status),
+    workingLines: Array.isArray(raw.workingLines)
+      ? raw.workingLines.filter((s): s is string => typeof s === 'string').slice(0, 12)
+      : undefined,
   };
 }
 
@@ -264,6 +269,21 @@ export const WORKING_LINES = [
   'One more pass…',
   'In the zone',
 ];
+
+/** Role-specific working lines, keyed by agent id. */
+export const WORKING_LINES_BY_ID: Record<string, string[]> = {
+  cos: ['Setting priorities…', 'Syncing the team…', 'Unblocking the floor…', 'Reviewing the week…'],
+  github: ['Rebasing the PR…', 'CI is green now', 'Pushing a fix…', 'Reviewing the diff…', 'Writing a test…'],
+  linkedin: ['Adjusting the spacing…', 'Trying a new palette…', 'Cleaning the layout…', 'Tuning the type…'],
+  x: ['Replying to a ticket…', 'Escalating this one…', 'Drafting the answer…', 'Checking the queue…'],
+  reddit: ['Sending the follow-up…', 'Qualifying the lead…', 'Updating the pipeline…', 'Prepping the demo…'],
+  gmail: ['Triaging the inbox…', 'Booking the room…', 'Scheduling the sync…', 'Clearing the drafts…'],
+  travel: ['Running the numbers…', 'Building the report…', 'Compiling the brief…', 'Comparing the options…'],
+  deal: ['Drafting the copy…', 'Scouting the opportunity…', 'Flagging the renewal…', 'Watching the market…'],
+  flight: ['Watching the signal…', 'Cross-checking sources…', 'Summarizing the paper…', 'Tracking the schedule…'],
+  optimizer: ['Tuning the queue…', 'Re-routing the flow…', 'Testing the priority…', 'Balancing the load…'],
+  swe: ['Shipping a pixel…', 'Fixing the pathfinding…', 'Polishing the desk…', 'Rebuilding the tiles…'],
+};
 
 export const TASK_POOL = [
   'Processed overnight queue',

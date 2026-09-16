@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { AgentDef, AgentStatus } from '../data/agents';
-import { IDLE_LINES, WAITING_LINES, WORKING_LINES } from '../data/agents';
+import { IDLE_LINES, WAITING_LINES, WORKING_LINES, WORKING_LINES_BY_ID } from '../data/agents';
 import { TILE } from '../utils/constants';
 import type { Grid } from '../systems/Pathfinding';
 import { findPath, randomWalkableTile } from '../systems/Pathfinding';
@@ -216,7 +216,7 @@ export class Agent extends Phaser.GameObjects.Container {
 
     if (this.status === 'working') {
       // Stay at desk; occasional mutter bubble
-      this.tickOccasionalBubble(dt, WORKING_LINES, 8, 14);
+      this.tickOccasionalBubble(dt, this.workingLines(), 8, 14);
       return;
     }
 
@@ -270,6 +270,11 @@ export class Agent extends Phaser.GameObjects.Container {
 
   private sheetKey(): string {
     return `agent-${this.def.id}`;
+  }
+
+  /** Working bubble lines: per-agent override, then id map, then shared pool. */
+  private workingLines(): string[] {
+    return this.def.workingLines ?? WORKING_LINES_BY_ID[this.def.id] ?? WORKING_LINES;
   }
 
   private sitAndType(): void {

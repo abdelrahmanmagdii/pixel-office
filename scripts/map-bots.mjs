@@ -73,6 +73,9 @@ const agents = list.map((b, i) => {
     ...(b.isChief ? { isChief: true } : i === 0 && b.isChief !== false ? {} : {}),
     lastTask: String(b.lastTask ?? b.task ?? 'Ready'),
     status: ['idle', 'working', 'waiting'].includes(b.status) ? b.status : 'idle',
+    ...(Array.isArray(b.workingLines) && b.workingLines.length
+      ? { workingLines: b.workingLines.filter((x) => typeof x === 'string') }
+      : {}),
   };
 });
 
