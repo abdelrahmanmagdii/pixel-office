@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { AGENTS } from '../data/agents';
 import { TILE } from './constants';
 
-/** Frame indices into public/assets/tileset.png (32×32, left → right). */
+/** Frame indices into the public tileset (32×32, left → right). */
 export const TILE_FRAME = {
   floor: 0, // wood plank
   gray: 1, // dark hallway strip (v5)
@@ -13,9 +13,10 @@ export const TILE_FRAME = {
   shadow: 6,
 } as const;
 
-/** Preload tiles + furniture from /public/assets/furniture; characters stay frozen. */
+/** Preload tiles + furniture from the app's public assets; characters stay frozen. */
 export function preloadAssets(scene: Phaser.Scene): void {
-  const F = '/assets/furniture';
+  const base = import.meta.env.BASE_URL;
+  const F = `${base}assets/furniture`;
   scene.load.spritesheet('tileset', `${F}/tileset.png`, {
     frameWidth: TILE,
     frameHeight: TILE,
@@ -58,7 +59,7 @@ export function preloadAssets(scene: Phaser.Scene): void {
   /** Agent chibi frames are 48×48 (tiles stay 32). Characters locked. */
   const AGENT_FRAME = 48;
   for (const a of AGENTS) {
-    scene.load.spritesheet(`agent-${a.id}`, `/assets/characters/agent-${a.id}.png`, {
+    scene.load.spritesheet(`agent-${a.id}`, `${base}assets/characters/agent-${a.id}.png`, {
       frameWidth: AGENT_FRAME,
       frameHeight: AGENT_FRAME,
     });

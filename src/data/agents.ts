@@ -209,7 +209,7 @@ export function parseOfficeConfig(data: unknown): OfficeConfig {
   };
 }
 
-/** Fetch /agents.json at boot. Falls back to DEFAULT_OFFICE on failure. */
+/** Fetch the app-relative agents.json at boot. Falls back to DEFAULT_OFFICE on failure. */
 export async function loadOfficeConfig(): Promise<OfficeConfig> {
   const url = `${import.meta.env.BASE_URL}agents.json`;
   try {
