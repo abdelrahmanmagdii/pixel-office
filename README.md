@@ -62,4 +62,4 @@ npm run preview
 
 ## 6. Contest entry
 
-Pixel Office is an entry in the Grok Bot Sharing Contest. See `CONTEST.md` for the entry checklist.
+Pixel Office is an entry in the Grok Bot Sharing Contest. See `CONTEST.md` for the entry checklist and `grok-bot/` for the ready-to-paste bot description, skill, and routine.
