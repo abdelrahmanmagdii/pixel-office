@@ -65,6 +65,7 @@ async function boot(): Promise<void> {
   const btnRandomize = document.getElementById('btn-randomize')!;
   const btnDemo = document.getElementById('btn-demo')!;
   const btnToggleCos = document.getElementById('btn-toggle-cos')!;
+  const btnCustomize = document.getElementById('btn-customize')!;
   const panelClose = document.getElementById('panel-close')!;
 
   const game = new Phaser.Game({
@@ -121,6 +122,27 @@ async function boot(): Promise<void> {
 
   window.addEventListener('resize', () => {
     game.scale.resize(gameParent.clientWidth, gameParent.clientHeight);
+  });
+
+  // Customize: edit + download the roster without leaving the page
+  const modal = document.getElementById('customize-modal')!;
+  const ta = document.getElementById('customize-json') as HTMLTextAreaElement;
+  btnCustomize.addEventListener('click', async () => {
+    const res = await fetch(`${import.meta.env.BASE_URL}agents.json`);
+    ta.value = JSON.stringify(await res.json(), null, 2);
+    modal.classList.remove('hidden');
+  });
+  document.getElementById('customize-close')!.addEventListener('click', () => modal.classList.add('hidden'));
+  document.getElementById('customize-download')!.addEventListener('click', () => {
+    const blob = new Blob([ta.value + '\n'], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'agents.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  document.getElementById('customize-copy')!.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(ta.value);
   });
 }
 

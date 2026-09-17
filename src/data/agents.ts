@@ -315,6 +315,21 @@ export const WAITING_LINES_BY_ID: Record<string, string[]> = {
   swe: ['Waiting on the build…', 'Need a review…', 'Blocked on assets…', 'LGTM pending…'],
 };
 
+/** Ids that ship with sprite art. Unknown ids reuse a fallback sprite at load. */
+export const BUILTIN_AGENT_IDS = [
+  'cos',
+  'github',
+  'linkedin',
+  'x',
+  'reddit',
+  'gmail',
+  'travel',
+  'deal',
+  'flight',
+  'optimizer',
+  'swe',
+];
+
 export const TASK_POOL = [
   'Processed overnight queue',
   'Synced calendars',

@@ -197,6 +197,51 @@ html, body, #app {
 #panel-actions button:hover { border-color: var(--accent2); }
 #panel-actions button.on { border-color: var(--accent); color: var(--accent); background: #16302a; }
 
+#customize-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  z-index: 10;
+}
+#customize-modal.hidden { display: none; }
+#customize-modal .modal-card {
+  width: min(560px, calc(100% - 2rem));
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+#customize-modal h2 { font-size: 1rem; margin-bottom: 0.4rem; }
+#customize-modal .muted { margin-bottom: 0.75rem; }
+#customize-modal code { color: var(--accent2); }
+#customize-modal textarea {
+  width: 100%;
+  height: 300px;
+  background: #0f1419;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.75rem;
+  resize: vertical;
+}
+#customize-modal .modal-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+#customize-modal button {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #243044;
+  color: var(--text);
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+#customize-modal button:hover { border-color: var(--accent2); }
+
 #hint {
   padding: 0.4rem 1rem;
   font-size: 0.72rem;

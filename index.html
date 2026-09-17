@@ -30,6 +30,7 @@
           <button id="btn-randomize" type="button">Randomize busy states</button>
           <button id="btn-demo" type="button">Play tour</button>
           <button id="btn-toggle-cos" type="button">Toggle CoS: Desk</button>
+          <button id="btn-customize" type="button">Customize</button>
         </div>
       </header>
       <main id="stage-wrap">
@@ -57,6 +58,18 @@
       <footer id="hint">
         WASD / arrows pan · scroll zoom · hover/click agent · click bubble or floor to dismiss · demo buttons above
       </footer>
+      <div id="customize-modal" class="hidden">
+        <div class="modal-card">
+          <h2>Make it your team</h2>
+          <p class="muted">Edit the roster, then download the file and drop it into your repo's <code>public/</code> folder.</p>
+          <textarea id="customize-json" spellcheck="false" aria-label="Roster JSON"></textarea>
+          <div class="modal-actions">
+            <button id="customize-download" type="button">Download agents.json</button>
+            <button id="customize-copy" type="button">Copy</button>
+            <button id="customize-close" type="button">Close</button>
+          </div>
+        </div>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

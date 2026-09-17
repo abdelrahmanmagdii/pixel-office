@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
  * One-shot remap: bots.json (or similar) → public/agents.json
+ * Schema: see SCHEMA.md.
  * Usage:
  *   node scripts/map-bots.mjs [input.json]
  *   node scripts/map-bots.mjs bots.example.json

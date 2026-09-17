@@ -13,29 +13,20 @@ Pixel Office renders a Grok Bot team as a busy office floor. Agents wander, sit 
 - The Grok Bot is the recipe. The bot template carries instructions, skills, and setup steps. People add the template to Grok Bot with one click.
 - The website and the bot work together. The bot writes the roster for the office; the office shows the team.
 
-## 2. Make an office for your team
+## 2. Make it your team in under 5 minutes
 
-Use the GitHub template to get your own copy of this project:
+Pick one path.
 
-1. Open <https://github.com/abdelrahmanmagdii/pixel-office>.
-2. Select **Use this template**.
-3. Name your repository and create it.
-4. GitHub Pages deploys your copy automatically (see `.github/workflows/pages.yml`).
-5. Edit `public/agents.json` to match your team.
+**Path A — no tools.** Open the live URL, select **Customize**, edit the roster, then download or copy `agents.json`. Paste it into your repo's `public/` folder. GitHub Pages redeploys automatically.
 
-Each person who follows these steps gets their own floor.
+**Path B — one form.** Select **Use this template** on GitHub, then run the **Personalize my office** action from the Actions tab. Paste your bot names (one per line, first is the Chief) and the action commits `agents.json` for you.
 
-## 3. Customize the roster
+## 3. Customize the roster (advanced)
 
-The roster lives in `public/agents.json` (`officeTitle`, `subtitle`, `agents[]`). Sprite sheets are `public/assets/characters/agent-{id}.png`. Keep `id` values that match existing art, or add matching PNGs.
+The roster is `public/agents.json`. The full field definitions and standard desk positions are in `SCHEMA.md`.
 
-To map a bot list into the roster:
-
-```bash
-cp bots.example.json bots.json   # edit names, roles, desks
-npm run map-bots                 # writes public/agents.json
-npm run build
-```
+- `id` values that ship with art: `cos`, `github`, `linkedin`, `x`, `reddit`, `gmail`, `travel`, `deal`, `flight`, `optimizer`, `swe`. Unknown ids render with a fallback sprite.
+- To map a bot list into the roster: `cp bots.example.json bots.json`, edit it, then `npm run map-bots`.
 
 ## 4. Run locally
 

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { AGENTS } from '../data/agents';
+import { AGENTS, BUILTIN_AGENT_IDS } from '../data/agents';
 import { TILE } from './constants';
 
 /** Frame indices into the public tileset (32×32, left → right). */
@@ -59,7 +59,9 @@ export function preloadAssets(scene: Phaser.Scene): void {
   /** Agent chibi frames are 48×48 (tiles stay 32). Characters locked. */
   const AGENT_FRAME = 48;
   for (const a of AGENTS) {
-    scene.load.spritesheet(`agent-${a.id}`, `${base}assets/characters/agent-${a.id}.png`, {
+    // Unknown ids reuse a fallback sheet so custom rosters still render.
+    const file = BUILTIN_AGENT_IDS.includes(a.id) ? a.id : a.isChief ? 'cos' : 'swe';
+    scene.load.spritesheet(`agent-${a.id}`, `${base}assets/characters/agent-${file}.png`, {
       frameWidth: AGENT_FRAME,
       frameHeight: AGENT_FRAME,
     });

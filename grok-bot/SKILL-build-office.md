@@ -19,18 +19,13 @@ Sequence:
    Otherwise, tell the user to open https://github.com/abdelrahmanmagdii/pixel-office and select **Use this template**.
 
 2. Clone the new repository into `/workspace`.
-3. Write `public/agents.json` from the schema:
+3. Write `public/agents.json` from the schema in `SCHEMA.md`:
 
-   - `id`: lowercase slug.
-   - `name`: short display name.
-   - `role`: one line.
-   - `color`: hex string.
-   - `desk`: `{ col, row }`. Reuse the standard desk positions for the built-in sections. Add new desks for custom bots.
-   - `isChief`: true only for Chief of Staff.
-   - `lastTask`: a short recent task, qualitative only.
-   - `status`: `idle`, `working`, or `waiting`.
+   - `officeTitle` and `subtitle`: header text.
+   - `agents[]` with: `id` (lowercase slug), `name`, `role`, `color` (hex), `desk` (`{ col, row }`), `isChief`, `lastTask` (qualitative only), `status` (`idle`, `working`, or `waiting`), and optional `workingLines`.
+   - Reuse the standard desk positions from `SCHEMA.md`. Add new desks for custom bots.
 
-4. Keep `id` values that match existing art: `cos`, `github`, `linkedin`, `x`, `reddit`, `gmail`, `travel`, `deal`, `flight`, `optimizer`, `swe`. For custom bots, add matching sprite PNGs at `public/assets/characters/agent-<id>.png`, or reuse the nearest existing id.
+4. Keep `id` values that match existing art: `cos`, `github`, `linkedin`, `x`, `reddit`, `gmail`, `travel`, `deal`, `flight`, `optimizer`, `swe`. Unknown ids still render with a fallback sprite, so custom rosters work without new art. To give an id its own look, add `public/assets/characters/agent-<id>.png`.
 5. Push to `main`.
 6. Return the live URL: `https://<username>.github.io/<repo>/`.
 
