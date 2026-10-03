@@ -600,89 +600,58 @@ def draw_hair(img, ox, oy, look, facing, hy, hx, hw, hh):
 
 
 def draw_face(img, ox, oy, look, facing, hy, hx, hw):
-    """Extra-readable sparkling anime eyes for office zoom (SWE QA)."""
+    """Simple classic pixel face: dot eyes, brow line, small mouth."""
     skin = look["skin"]
     if facing == "up":
         return
-    outline = OUTLINE
-    white = (255, 255, 255, 255)
-    sclera = (250, 252, 255, 255)
-    iris = (55, 95, 170, 255)
-    pupil = (18, 22, 36, 255)
-    cheek = (255, 140, 150, 230)
-    mouth = darken(skin, 0.72)
-    # Larger eye boxes so catchlights survive downscale / desk zoom
-    ew, eh = 6, 6
-    ly = oy + hy + 7
-    lx = ox + hx + 3
-    rx = ox + hx + hw - 3 - ew
+    eye = (28, 26, 34, 255)
+    brow = darken(look["hair"], 0.85)
+    mouth = darken(skin, 0.68)
+    cheek = darken(skin, 0.9)
+    ly = oy + hy + 9
+    lx = ox + hx + 4
+    rx = ox + hx + hw - 6
 
-    def sparkle_eye(ex, ey):
-        # white sclera first so eyes read bright at distance
-        fill_rect(img, ex, ey, ew, eh, sclera)
-        outline_rect(img, ex, ey, ew, eh, outline)
-        # iris + pupil
-        fill_rect(img, ex + 1, ey + 1, 4, 4, iris)
-        fill_rect(img, ex + 2, ey + 2, 2, 2, pupil)
-        # bright catchlights (2–3 px)
-        px(img, ex + 1, ey + 1, white)
-        px(img, ex + 2, ey + 1, white)
-        px(img, ex + 1, ey + 2, white)
-        px(img, ex + 4, ey + 4, (200, 220, 255, 230))
+    def dot_eye(ex):
+        fill_rect(img, ex, ly, 2, 3, eye)
+        fill_rect(img, ex, ly - 2, 2, 1, brow)
 
     if facing == "down":
-        sparkle_eye(lx, ly)
-        sparkle_eye(rx, ly)
-        fill_rect(img, ox + hx + 3, oy + hy + 14, 3, 2, cheek)
-        fill_rect(img, ox + hx + hw - 6, oy + hy + 14, 3, 2, cheek)
-        fill_rect(img, ox + hx + hw // 2 - 2, oy + hy + 16, 4, 1, mouth)
-        px(img, ox + hx + hw // 2 - 3, oy + hy + 15, mouth)
-        px(img, ox + hx + hw // 2 + 2, oy + hy + 15, mouth)
+        dot_eye(lx)
+        dot_eye(rx)
+        fill_rect(img, ox + hx + 3, oy + hy + 13, 2, 1, cheek)
+        fill_rect(img, ox + hx + hw - 5, oy + hy + 13, 2, 1, cheek)
+        fill_rect(img, ox + hx + hw // 2 - 1, oy + hy + 15, 3, 1, mouth)
     elif facing == "left":
-        sparkle_eye(ox + hx + 2, ly)
-        fill_rect(img, ox + hx + 2, oy + hy + 14, 3, 2, cheek)
-        fill_rect(img, ox + hx + 5, oy + hy + 16, 3, 1, mouth)
+        dot_eye(ox + hx + 3)
+        fill_rect(img, ox + hx + 3, oy + hy + 15, 2, 1, mouth)
     else:
-        sparkle_eye(ox + hx + hw - 8, ly)
-        fill_rect(img, ox + hx + hw - 5, oy + hy + 14, 3, 2, cheek)
-        fill_rect(img, ox + hx + hw - 8, oy + hy + 16, 3, 1, mouth)
+        dot_eye(ox + hx + hw - 5)
+        fill_rect(img, ox + hx + hw - 5, oy + hy + 15, 2, 1, mouth)
 
     outfit = look["outfit"]
-    if outfit == "polo_glasses" and facing != "up":
-        frame = look["accent"]
+    frame = look["accent"]
+    if outfit == "polo_glasses":
         if facing == "down":
-            outline_rect(img, lx - 1, ly - 1, ew + 2, eh + 2, frame)
-            outline_rect(img, rx - 1, ly - 1, ew + 2, eh + 2, frame)
-            fill_rect(img, lx + ew, ly + 2, max(1, rx - (lx + ew)), 1, frame)
-            # light lens tint over eyes, keep catchlights
-            fill_rect(img, lx + 1, ly + 1, ew - 2, eh - 2, (180, 200, 220, 55))
-            fill_rect(img, rx + 1, ly + 1, ew - 2, eh - 2, (180, 200, 220, 55))
-            px(img, lx + 1, ly + 1, white)
-            px(img, rx + 1, ly + 1, white)
+            outline_rect(img, lx - 1, ly - 1, 4, 5, frame)
+            outline_rect(img, rx - 1, ly - 1, 4, 5, frame)
+            fill_rect(img, lx + 3, ly + 1, max(1, rx - lx - 4), 1, frame)
         elif facing == "left":
-            outline_rect(img, ox + hx + 1, ly - 1, ew + 2, eh + 2, frame)
+            outline_rect(img, ox + hx + 2, ly - 1, 4, 5, frame)
         else:
-            outline_rect(img, ox + hx + hw - 9, ly - 1, ew + 2, eh + 2, frame)
+            outline_rect(img, ox + hx + hw - 6, ly - 1, 4, 5, frame)
 
-    if outfit in ("jacket_shades", "aviator") and facing != "up":
-        # Keep shades, but add a bright specular so faces still pop
-        lens = (22, 24, 34, 220)
-        frame = look["accent"]
+    if outfit in ("jacket_shades", "aviator"):
+        lens = (24, 26, 36, 255)
+        bridge = (200, 168, 70, 255) if outfit == "aviator" else frame
         if facing == "down":
-            fill_rect(img, lx - 1, ly - 1, ew + 2, eh + 1, lens)
-            fill_rect(img, rx - 1, ly - 1, ew + 2, eh + 1, lens)
-            bridge = (218, 180, 60, 255) if outfit == "aviator" else frame
-            fill_rect(img, lx + ew, ly + 1, max(1, rx - (lx + ew)), 2, bridge)
-            px(img, lx, ly - 1, white)
-            px(img, lx + 1, ly, (160, 170, 190, 255))
-            px(img, rx, ly - 1, white)
-            px(img, rx + 1, ly, (160, 170, 190, 255))
+            fill_rect(img, lx - 1, ly, 4, 2, lens)
+            fill_rect(img, rx - 1, ly, 4, 2, lens)
+            fill_rect(img, lx + 3, ly, max(1, rx - lx - 4), 1, bridge)
         elif facing == "left":
-            fill_rect(img, ox + hx + 1, ly - 1, ew + 2, eh + 1, lens)
-            px(img, ox + hx + 2, ly - 1, white)
+            fill_rect(img, ox + hx + 2, ly, 4, 2, lens)
         else:
-            fill_rect(img, ox + hx + hw - 9, ly - 1, ew + 2, eh + 1, lens)
-            px(img, ox + hx + hw - 8, ly - 1, white)
+            fill_rect(img, ox + hx + hw - 6, ly, 4, 2, lens)
 
 
 def draw_hat(img, ox, oy, look, facing, hy, hx, hw, bob):
