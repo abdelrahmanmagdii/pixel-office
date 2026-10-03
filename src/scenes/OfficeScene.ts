@@ -1,17 +1,20 @@
 import Phaser from 'phaser';
 import type { AgentStatus } from '../data/agents';
-import { AGENTS, TASK_POOL, officeTitle } from '../data/agents';
+import { AGENTS, TASK_POOL } from '../data/agents';
 import { Agent } from '../entities/Agent';
 import type { Grid } from '../systems/Pathfinding';
 import { emptyGrid } from '../systems/Pathfinding';
 import type { TileKind } from '../utils/constants';
 import {
   BOSS_DESK,
-  EMPTY_DESKS,
   CAMERA,
+  COFFEE_SPOT,
+  EMPTY_DESKS,
   MAP_COLS,
   MAP_ROWS,
   TILE,
+  WALL_WINDOWS,
+  ZONES,
 } from '../utils/constants';
 import { createAgentAnims, preloadAssets, TILE_FRAME } from '../utils/PixelArt';
 
@@ -25,6 +28,8 @@ export type PanelPayload = {
   location: string;
   isChief: boolean;
 };
+
+type DayPhase = 'day' | 'dusk' | 'night';
 
 type UiHooks = {
   onSelect: (payload: PanelPayload | null) => void;
@@ -48,6 +53,9 @@ export class OfficeScene extends Phaser.Scene {
     D: Phaser.Input.Keyboard.Key;
   };
   private floorLayer!: Phaser.GameObjects.Container;
+  private glows: { agent: Agent; glow: Phaser.GameObjects.Ellipse }[] = [];
+  private dayPhase: DayPhase = 'day';
+  private clockHands!: Phaser.GameObjects.Graphics;
 
   constructor() {
     super('Office');
@@ -69,19 +77,9 @@ export class OfficeScene extends Phaser.Scene {
     this.drawMap();
     this.placeFurniture();
     this.spawnAgents();
+    this.buildAmbience();
     this.setupCamera();
     this.setupInput();
-
-    this.add
-      .text(MAP_COLS * TILE - 8, 8, officeTitle, {
-        fontFamily: 'monospace',
-        fontSize: '12px',
-        color: '#94a3b8',
-      })
-      .setOrigin(1, 0)
-      .setScrollFactor(0)
-      .setDepth(5000)
-      .setAlpha(0.85);
 
     (window as unknown as { __pixelOffice: PixelOfficeApi }).__pixelOffice = {
       randomizeBusy: () => this.randomizeBusy(),
@@ -93,11 +91,12 @@ export class OfficeScene extends Phaser.Scene {
     };
   }
 
-  update(_t: number, dtMs: number): void {
+  update(t: number, dtMs: number): void {
     const dt = Math.min(dtMs / 1000, 0.05);
     this.panCamera(dt);
     for (const a of this.agents) a.updateAgent(dt);
     this.chiefReact(dt);
+    this.updateGlows(t, dt);
   }
 
   private buildMap(): TileKind[][] {
@@ -105,7 +104,11 @@ export class OfficeScene extends Phaser.Scene {
     // Left/right: wall | hallway | wood … wood | hallway | wall (sharp vertical cut)
     return Array.from({ length: MAP_ROWS }, (_, row) =>
       Array.from({ length: MAP_COLS }, (_, col) => {
-        if (row === 0 || row === MAP_ROWS - 1) return 'wall';
+        if (row === 0) {
+          if (col === 0 || col === MAP_COLS - 1) return 'wall';
+          return WALL_WINDOWS.includes(col) ? 'window' : 'wallface';
+        }
+        if (row === MAP_ROWS - 1) return 'wall';
         if (col === 0 || col === MAP_COLS - 1) return 'wall';
         if (col === 1 || col === MAP_COLS - 2) return 'hallway';
         return 'floor';
@@ -139,10 +142,10 @@ export class OfficeScene extends Phaser.Scene {
   }
 
 
-  /** Block 3×2 tile desk footprint north of the seat (seat row stays walkable). */
+  /** Block 3×2 tile desk footprint south of the seat (seat row stays walkable). */
   private blockDeskFootprint(grid: Grid, seatCol: number, seatRow: number): void {
     for (let dc = seatCol - 1; dc <= seatCol + 1; dc++) {
-      for (let dr = seatRow - 2; dr <= seatRow - 1; dr++) {
+      for (let dr = seatRow + 1; dr <= seatRow + 2; dr++) {
         if (dr >= 0 && dr < MAP_ROWS && dc >= 0 && dc < MAP_COLS) {
           grid[dr][dc] = false;
         }
@@ -150,11 +153,11 @@ export class OfficeScene extends Phaser.Scene {
     }
   }
 
-  /** Boss desk 128×64 ≈ 4×2 north of Chief stand; stand stays walkable. */
+  /** Boss desk 128×64 ≈ 4×2 south of Chief stand; stand stays walkable. */
   private blockBossDeskFootprint(grid: Grid): void {
     const { standCol, standRow } = BOSS_DESK;
     for (let dc = standCol - 2; dc <= standCol + 1; dc++) {
-      for (let dr = standRow - 2; dr <= standRow - 1; dr++) {
+      for (let dr = standRow + 1; dr <= standRow + 2; dr++) {
         if (dr >= 0 && dr < MAP_ROWS && dc >= 0 && dc < MAP_COLS) {
           grid[dr][dc] = false;
         }
@@ -182,7 +185,6 @@ export class OfficeScene extends Phaser.Scene {
       // east wood edge (col 25 — hallway col 26 stays clear)
       [25, 4],
       [25, 7],
-      [25, 11],
       [25, 14],
       // break corner (SE)
       [23, 15],
@@ -194,7 +196,7 @@ export class OfficeScene extends Phaser.Scene {
       [9, 15],
       [19, 15],
       // sparse aisle accents
-      [6, 12],
+      [5, 15],
       [22, 8],
     ];
   }
@@ -203,6 +205,10 @@ export class OfficeScene extends Phaser.Scene {
     switch (k) {
       case 'wall':
         return TILE_FRAME.wall;
+      case 'wallface':
+        return TILE_FRAME.wallface;
+      case 'window':
+        return TILE_FRAME.window;
       case 'hallway':
         return TILE_FRAME.gray;
       case 'glass':
@@ -231,29 +237,18 @@ export class OfficeScene extends Phaser.Scene {
       }
     }
 
-    this.add
-      .text(14 * TILE, 2 * TILE, 'MAIN FLOOR', {
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        color: '#78716c',
-      })
-      .setOrigin(0.5)
-      .setDepth(2);
-
-    const zoneLabel = (col: number, row: number, label: string) => {
+    for (const z of ZONES) {
+      const x0 = 6.75 * TILE;
+      const y0 = (z.seatRow - 0.4) * TILE;
       this.add
-        .text(col * TILE, row * TILE, label, {
-          fontFamily: 'monospace',
-          fontSize: '10px',
-          color: '#78716c',
-        })
-        .setOrigin(0.5)
-        .setDepth(2)
-        .setAlpha(0.6);
-    };
-    zoneLabel(14, 5, 'ENGINEERING');
-    zoneLabel(14, 9, 'OPERATIONS');
-    zoneLabel(14, 13, 'PRODUCT');
+        .nineslice(x0, y0, 'rug', undefined, 15.5 * TILE, 2.9 * TILE, 8, 8, 8, 8)
+        .setOrigin(0, 0)
+        .setTint(z.tint)
+        .setAlpha(0.8)
+        .setDepth(1);
+      // Vertical sign on the rug's west edge, clear of chairs and nameplates
+      this.zoneChip(x0 - 1, y0 + 1.45 * TILE, z.label).setOrigin(0.5, 1).setRotation(-Math.PI / 2);
+    }
 
     // STARBASE poster on the north-wall whiteboard
     this.add
@@ -263,128 +258,155 @@ export class OfficeScene extends Phaser.Scene {
         color: '#fbbf24',
       })
       .setOrigin(0.5)
-      .setDepth(7)
+      .setDepth(1002)
       .setAlpha(0.95);
+  }
 
-    this.add
-      .text(BOSS_DESK.standCol * TILE + TILE / 2, (BOSS_DESK.standRow - 3) * TILE, 'CHIEF', {
+  private zoneChip(x: number, y: number, label: string): Phaser.GameObjects.Text {
+    return this.add
+      .text(x, y, label, {
         fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#fbbf24',
+        fontSize: '9px',
+        color: '#e7e5e4',
+        backgroundColor: '#1c1917b3',
+        padding: { x: 4, y: 2 },
       })
-      .setOrigin(0.5, 0)
-      .setDepth(2);
+      .setOrigin(0, 1)
+      .setResolution(2)
+      .setDepth(3);
   }
 
   private placeFurniture(): void {
-    // Furniture v2: desks 96×64 (origin bottom-center), stools/chairs 48×48
-    const placeDesk = (seatCol: number, seatRow: number, key: string) => {
-      const x = seatCol * TILE + TILE / 2;
-      const y = seatRow * TILE; // front edge of desk / north of seat
-      this.add.image(x, y, key).setOrigin(0.5, 1).setDepth(5);
-    };
-    const placeSeat = (seatCol: number, seatRow: number, key: string) => {
+    // Agents sit NORTH of their desk facing the camera; we see the backs of the screens.
+    // Depth is y-sorted with agents (1000 + row) so walkers pass in front/behind correctly.
+    const prop = (col: number, row: number, key: string, yOff = 28, originY = 1) =>
       this.add
-        .image(seatCol * TILE + TILE / 2, seatRow * TILE + TILE / 2, key)
+        .image(col * TILE + 16, row * TILE + yOff, key)
+        .setOrigin(0.5, originY)
+        .setDepth(1000 + row + 0.9);
+    const placeDesk = (seatCol: number, seatRow: number, key: string) =>
+      this.add
+        .image(seatCol * TILE + TILE / 2, seatRow * TILE + 4, key)
+        .setOrigin(0.5, 0)
+        .setDepth(1000 + seatRow + 0.5);
+    const placeChair = (seatCol: number, seatRow: number) =>
+      this.add
+        .image(seatCol * TILE + TILE / 2, seatRow * TILE + TILE / 2, 'chair')
         .setOrigin(0.5, 0.7)
-        .setDepth(4);
-    };
+        .setDepth(1000 + seatRow - 0.5);
 
-    // --- Boss desk: single desk-boss.png (128×64). Chief stands SOUTH in front, facing camera ---
-    {
-      const { standCol, standRow } = BOSS_DESK;
-      const x = standCol * TILE + TILE / 2;
-      const y = standRow * TILE;
-      this.add.image(x, y, 'desk-boss').setOrigin(0.5, 1).setDepth(5);
-    }
+    placeDesk(BOSS_DESK.standCol, BOSS_DESK.standRow, 'desk-boss-back');
 
-    // --- Agent desks: per-role furniture ---
-    const DESK_BY_ID: Record<string, string> = {
-      github: 'desk',
-      gmail: 'desk',
-      flight: 'desk',
-      optimizer: 'desk',
-      swe: 'desk',
-      linkedin: 'desk-laptop',
-      x: 'desk-laptop',
-      reddit: 'desk-laptop',
-      travel: 'desk-laptop',
-      deal: 'desk-laptop',
-    };
-    const CHAIR_IDS = new Set(['linkedin', 'deal', 'reddit']);
+    const LAPTOP_IDS = new Set(['linkedin', 'x', 'reddit', 'travel', 'deal']);
     for (const a of AGENTS) {
       if (a.isChief) continue;
-      const deskKey = DESK_BY_ID[a.id] ?? 'desk';
-      const seatKey = CHAIR_IDS.has(a.id) ? 'chair' : 'stool';
-      placeDesk(a.desk.col, a.desk.row, deskKey);
-      placeSeat(a.desk.col, a.desk.row, seatKey);
-      const label = a.name.split(' ')[0];
-      const hex = '#' + a.color.toString(16).padStart(6, '0');
-      const lx = a.desk.col * TILE + TILE / 2;
-      const ly = (a.desk.row - 2) * TILE + 4;
-      this.add.rectangle(lx, ly - 4, 16, 3, a.color).setOrigin(0.5).setDepth(5);
-      this.add
-        .text(lx, ly, label, {
-          fontFamily: 'monospace',
-          fontSize: '8px',
-          color: hex,
-        })
-        .setOrigin(0.5, 0)
-        .setDepth(6);
+      placeChair(a.desk.col, a.desk.row);
+      placeDesk(a.desk.col, a.desk.row, LAPTOP_IDS.has(a.id) ? 'desk-laptop-back' : 'desk-back');
     }
 
-    // --- v5 empty desks (no agents) — desk-empty sprites; keep Chief front clear ---
     for (const d of EMPTY_DESKS) {
-      placeDesk(d.col, d.row, d.key);
-      placeSeat(d.col, d.row, 'stool');
+      placeChair(d.col, d.row);
+      placeDesk(d.col, d.row, d.key === 'desk-empty' ? d.key : `${d.key}-back`);
     }
 
-    // --- v5 edge props on wood beside hallway strips; bigger plants ---
     // North wall
-    this.add.image(4 * TILE + 16, 1 * TILE + 28, 'filing-cabinet').setOrigin(0.5, 1).setDepth(6);
-    this.add.image(6 * TILE + 16, 1 * TILE + 28, 'plant-large').setOrigin(0.5, 1).setDepth(6);
-    this.add.image(8 * TILE + 16, 1 * TILE + 28, 'boxes').setOrigin(0.5, 1).setDepth(6);
-    this.add.image(10 * TILE + 16, 1 * TILE + 28, 'bookshelf').setOrigin(0.5, 1).setDepth(6);
-    this.add.image(14 * TILE + 16, 1 * TILE + 20, 'whiteboard').setOrigin(0.5, 0.5).setDepth(6);
-    this.add.image(18 * TILE + 16, 1 * TILE + 28, 'plant-tall').setOrigin(0.5, 1).setDepth(6);
-    this.add.image(20 * TILE + 16, 1 * TILE + 28, 'boxes').setOrigin(0.5, 1).setDepth(6);
-    this.add.image(22 * TILE + 16, 1 * TILE + 28, 'filing-cabinet').setOrigin(0.5, 1).setDepth(6);
+    prop(4, 1, 'filing-cabinet');
+    prop(6, 1, 'plant-large');
+    prop(8, 1, 'boxes');
+    prop(10, 1, 'bookshelf');
+    prop(14, 1, 'whiteboard', 20, 0.5);
+    prop(18, 1, 'plant-tall');
+    prop(20, 1, 'boxes');
+    prop(22, 1, 'filing-cabinet');
 
     // West wood edge (col 2) — hallway col 1 stays clear
-    this.add.image(2 * TILE + 16, 4 * TILE + 28, 'plant-large').setOrigin(0.5, 1).setDepth(6);
-    this.add.image(2 * TILE + 16, 7 * TILE + 28, 'side-table').setOrigin(0.5, 1).setDepth(6);
-    this.add.image(2 * TILE + 16, 11 * TILE + 28, 'plant-tall').setOrigin(0.5, 1).setDepth(6);
-    this.add.image(2 * TILE + 16, 15 * TILE + 28, 'plant').setOrigin(0.5, 1).setDepth(6);
+    prop(2, 4, 'plant-large');
+    prop(2, 7, 'side-table');
+    prop(2, 11, 'plant-tall');
+    prop(2, 15, 'plant');
 
     // East wood edge (col 25) — hallway col 26 stays clear
-    this.add.image(25 * TILE + 16, 4 * TILE + 28, 'cooler').setOrigin(0.5, 1).setDepth(6);
-    this.add.image(25 * TILE + 16, 7 * TILE + 28, 'bench').setOrigin(0.5, 1).setDepth(6);
-    this.add.image(25 * TILE + 16, 11 * TILE + 28, 'plant-large').setOrigin(0.5, 1).setDepth(6);
-    this.add.image(25 * TILE + 16, 14 * TILE + 28, 'trash').setOrigin(0.5, 1).setDepth(6);
+    prop(25, 4, 'cooler');
+    prop(25, 7, 'bench');
+    prop(25, 14, 'trash');
 
     // Sparse aisle accents
-    this.add.image(6 * TILE + 16, 12 * TILE + 28, 'plant').setOrigin(0.5, 1).setDepth(6);
-    this.add.image(22 * TILE + 16, 8 * TILE + 28, 'plant-succulent').setOrigin(0.5, 1).setDepth(6);
+    prop(5, 15, 'plant');
+    prop(22, 8, 'plant-succulent');
 
-    // Boss flanks — larger plants, clear of desk silhouette
-    this.add.image(9 * TILE + 16, 15 * TILE + 28, 'plant-tall').setOrigin(0.5, 1).setDepth(6);
-    this.add.image(19 * TILE + 16, 15 * TILE + 28, 'plant-large').setOrigin(0.5, 1).setDepth(6);
+    // Boss flanks
+    prop(9, 15, 'plant-tall');
+    prop(19, 15, 'plant-large');
 
-    // --- Break corner (SE) ---
-    this.add.image(24 * TILE + 16, 15 * TILE + 28, 'cooler').setOrigin(0.5, 1).setDepth(7);
-    this.add.image(23 * TILE + 16, 15 * TILE + 28, 'coffee-station').setOrigin(0.5, 1).setDepth(7);
-    this.add.image(23 * TILE + 16, 17 * TILE + 28, 'bookshelf').setOrigin(0.5, 1).setDepth(7);
-    this.add.image(25 * TILE + 16, 17 * TILE + 28, 'boxes').setOrigin(0.5, 1).setDepth(6);
-    this.add.image(22 * TILE + 16, 17 * TILE + 28, 'trash').setOrigin(0.5, 1).setDepth(6);
+    // Break corner (SE)
+    prop(24, 15, 'cooler');
+    prop(23, 15, 'coffee-station');
+    prop(23, 17, 'bookshelf');
+    prop(25, 17, 'boxes');
+    prop(22, 17, 'trash');
+    this.zoneChip(24 * TILE, 14 * TILE + 14, 'BREAK').setOrigin(0.5, 1).setDepth(1020);
+  }
 
-    this.add
-      .text(24 * TILE + 16, 14 * TILE + 8, 'BREAK', {
-        fontFamily: 'monospace',
-        fontSize: '9px',
-        color: '#78716c',
-      })
-      .setOrigin(0.5)
-      .setDepth(2);
+  /** Wall clock, day/night tint and per-desk screen glow. */
+  private buildAmbience(): void {
+    const cx = 9 * TILE + 16;
+    const cy = 14;
+    this.add.image(cx, cy, 'clock').setDepth(2);
+    this.clockHands = this.add.graphics().setDepth(2);
+    const drawClock = () => {
+      const d = new Date();
+      const h = ((d.getHours() % 12) + d.getMinutes() / 60) / 12;
+      const m = d.getMinutes() / 60;
+      const g = this.clockHands;
+      g.clear();
+      g.lineStyle(1, 0x1c1917, 1);
+      g.lineBetween(cx, cy, cx + Math.sin(h * Math.PI * 2) * 3, cy - Math.cos(h * Math.PI * 2) * 3);
+      g.lineBetween(cx, cy, cx + Math.sin(m * Math.PI * 2) * 5, cy - Math.cos(m * Math.PI * 2) * 5);
+    };
+    drawClock();
+    this.time.addEvent({ delay: 30_000, loop: true, callback: drawClock });
+
+    this.dayPhase = this.resolveDayPhase();
+    const tint =
+      this.dayPhase === 'night'
+        ? { color: 0x0b1640, alpha: 0.32 }
+        : this.dayPhase === 'dusk'
+          ? { color: 0xf59e0b, alpha: 0.08 }
+          : null;
+    if (tint) {
+      this.add
+        .rectangle(0, 0, MAP_COLS * TILE, MAP_ROWS * TILE, tint.color, tint.alpha)
+        .setOrigin(0)
+        .setDepth(3000);
+    }
+
+    for (const a of this.agents) {
+      const seat = a.def.isChief ? { col: BOSS_DESK.standCol, row: BOSS_DESK.standRow } : a.def.desk;
+      const glow = this.add
+        .ellipse(seat.col * TILE + TILE / 2, seat.row * TILE + 4, a.def.isChief ? 72 : 40, 18, 0x7dd3fc)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setAlpha(0)
+        .setDepth(3001);
+      this.glows.push({ agent: a, glow });
+    }
+  }
+
+  /** `?time=day|dusk|night` overrides the local clock (handy for screenshots). */
+  private resolveDayPhase(): DayPhase {
+    const q = new URLSearchParams(window.location.search).get('time');
+    if (q === 'day' || q === 'dusk' || q === 'night') return q;
+    const h = new Date().getHours();
+    if (h >= 20 || h < 6) return 'night';
+    if (h >= 17 || h < 8) return 'dusk';
+    return 'day';
+  }
+
+  private updateGlows(t: number, dt: number): void {
+    const boost = this.dayPhase === 'night' ? 1.6 : 1;
+    this.glows.forEach(({ agent, glow }, i) => {
+      const target = agent.isTyping() ? (0.16 + 0.05 * Math.sin(t / 260 + i * 1.7)) * boost : 0;
+      glow.setAlpha(glow.alpha + (target - glow.alpha) * Math.min(1, dt * 5));
+    });
   }
 
   private spawnAgents(): void {
@@ -402,6 +424,7 @@ export class OfficeScene extends Phaser.Scene {
       } else {
         // Main-floor wander so idle agents aren't frozen statues
         agent.setWanderRegion({ x0: 2, y0: 2, x1: 25, y1: 16 });
+        agent.setCoffeeSpot(COFFEE_SPOT);
       }
       this.agents.push(agent);
     }
@@ -432,83 +455,133 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   private setupCamera(): void {
-    const w = MAP_COLS * TILE;
-    const h = MAP_ROWS * TILE;
-    this.cameras.main.setBounds(0, 0, w, h);
-    // Start on main floor desk cluster at a tighter zoom (scroll still adjusts)
-    this.cameras.main.centerOn(
-      CAMERA.startCol * TILE + TILE / 2,
-      CAMERA.startRow * TILE + TILE / 2,
-    );
-    this.cameras.main.setZoom(CAMERA.defaultZoom);
-    this.cameras.main.setBackgroundColor(0x0b1220);
+    const cam = this.cameras.main;
+    cam.setBackgroundColor(0x0b1220);
+    cam.setZoom(this.fitZoom());
+    cam.centerOn((MAP_COLS * TILE) / 2, (MAP_ROWS * TILE) / 2);
+    // Own clamp (not setBounds) so a map smaller than the view stays centered.
+    this.events.on('postupdate', () => this.clampCamera());
+  }
+
+  /** Start zoom: whole map on desktop; full height (desks fill the width) on narrow screens. */
+  private fitZoom(): number {
+    const { width, height } = this.scale;
+    const byW = width / (MAP_COLS * TILE);
+    const byH = height / (MAP_ROWS * TILE);
+    const fit = width < 720 ? byH * 0.95 : Math.min(byW, byH);
+    return Phaser.Math.Clamp(fit, CAMERA.minZoom, CAMERA.defaultZoom);
+  }
+
+  /** Lowest useful zoom: a little smaller than the whole map. */
+  private minZoom(): number {
+    const { width, height } = this.scale;
+    const contain = Math.min(width / (MAP_COLS * TILE), height / (MAP_ROWS * TILE));
+    return Math.max(CAMERA.minZoom, Math.min(contain * 0.9, CAMERA.defaultZoom));
+  }
+
+  private clampCamera(): void {
+    const cam = this.cameras.main;
+    const axis = (scroll: number, size: number, map: number) => {
+      const view = size / cam.zoom;
+      const mid = scroll + size / 2;
+      const m = view >= map ? map / 2 : Phaser.Math.Clamp(mid, view / 2, map - view / 2);
+      return m - size / 2;
+    };
+    cam.scrollX = axis(cam.scrollX, cam.width, MAP_COLS * TILE);
+    cam.scrollY = axis(cam.scrollY, cam.height, MAP_ROWS * TILE);
+  }
+
+  /** Zoom while keeping the world point under (sx, sy) fixed. */
+  private zoomAt(next: number, sx: number, sy: number): void {
+    const cam = this.cameras.main;
+    const z = Phaser.Math.Clamp(next, this.minZoom(), CAMERA.maxZoom);
+    const wx = cam.scrollX + cam.width / 2 + (sx - cam.width / 2) / cam.zoom;
+    const wy = cam.scrollY + cam.height / 2 + (sy - cam.height / 2) / cam.zoom;
+    cam.setZoom(z);
+    cam.scrollX = wx - (sx - cam.width / 2) / z - cam.width / 2;
+    cam.scrollY = wy - (sy - cam.height / 2) / z - cam.height / 2;
   }
 
   private setupInput(): void {
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.wasd = this.input.keyboard!.addKeys('W,A,S,D') as typeof this.wasd;
+    this.input.addPointer(1);
 
-    this.input.on('wheel', (_p: unknown, _g: unknown, _x: number, dy: number) => {
-      const cam = this.cameras.main;
-      const next = Phaser.Math.Clamp(
-        cam.zoom - dy * 0.0015,
-        CAMERA.minZoom,
-        CAMERA.maxZoom,
-      );
-      cam.setZoom(next);
+    this.input.on('wheel', (p: Phaser.Input.Pointer, _g: unknown, _x: number, dy: number) => {
+      this.zoomAt(this.cameras.main.zoom * (1 - dy * 0.0015), p.x, p.y);
     });
 
+    // Drag (mouse or one finger) pans; pinch zooms; a press without movement is a tap.
     let dragging = false;
+    let moved = false;
+    let downX = 0;
+    let downY = 0;
     let lastX = 0;
     let lastY = 0;
+    let pinchDist = 0;
+    const p1 = this.input.pointer1;
+    const p2 = this.input.pointer2;
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (this.demoMode) this.stopDemo();
-      if (p.middleButtonDown() || (p.leftButtonDown() && p.event.shiftKey)) {
-        dragging = true;
-        lastX = p.x;
-        lastY = p.y;
+      if (p1.isDown && p2.isDown) {
+        pinchDist = Phaser.Math.Distance.Between(p1.x, p1.y, p2.x, p2.y);
+        moved = true;
         return;
       }
-      if (!p.leftButtonDown()) return;
-
-      const world = this.cameras.main.getWorldPoint(p.x, p.y);
-      // Scale click radius with zoom, so targets stay clickable when zoomed out
-      const clickRadius = Phaser.Math.Clamp(28 / this.cameras.main.zoom, 16, 42);
-      let best: Agent | null = null;
-      let bestDist = clickRadius;
-      for (const a of this.agents) {
-        const d = Phaser.Math.Distance.Between(world.x, world.y, a.x, a.y - 6);
-        if (d < bestDist) {
-          bestDist = d;
-          best = a;
-        }
-      }
-      if (best) {
-        // Second click on the Chief toggles Desk <-> Patrol
-        const wasSelected = this.selected === best;
-        best.dismissBubble();
-        this.selectAgent(best);
-        if (wasSelected && best.def.isChief) this.toggleCoS();
-        return;
-      }
-
-      // Empty floor: dismiss all bubbles + deselect; soft pan/focus to click
-      for (const a of this.agents) a.dismissBubble();
-      this.selectAgent(null);
-      this.cameras.main.pan(world.x, world.y, 220, 'Sine.easeInOut');
-    });
-    this.input.on('pointerup', () => {
-      dragging = false;
+      if (p.rightButtonDown()) return;
+      dragging = true;
+      moved = false;
+      downX = lastX = p.x;
+      downY = lastY = p.y;
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
-      if (!dragging) return;
       const cam = this.cameras.main;
+      if (p1.isDown && p2.isDown) {
+        const d = Phaser.Math.Distance.Between(p1.x, p1.y, p2.x, p2.y);
+        if (pinchDist > 0) this.zoomAt(cam.zoom * (d / pinchDist), (p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+        pinchDist = d;
+        return;
+      }
+      if (!dragging || !p.isDown) return;
+      if (!moved && Phaser.Math.Distance.Between(p.x, p.y, downX, downY) > 6) moved = true;
+      if (!moved) return;
       cam.scrollX -= (p.x - lastX) / cam.zoom;
       cam.scrollY -= (p.y - lastY) / cam.zoom;
       lastX = p.x;
       lastY = p.y;
     });
+    this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      const wasTap = dragging && !moved && p.button === 0;
+      dragging = false;
+      if (!p1.isDown && !p2.isDown) pinchDist = 0;
+      if (wasTap) this.handleTap(p);
+    });
+  }
+
+  private handleTap(p: Phaser.Input.Pointer): void {
+    const world = this.cameras.main.getWorldPoint(p.x, p.y);
+    // Scale tap radius with zoom so targets stay hittable when zoomed out
+    const radius = Phaser.Math.Clamp(28 / this.cameras.main.zoom, 16, 42);
+    let best: Agent | null = null;
+    let bestDist = radius;
+    for (const a of this.agents) {
+      const d = Phaser.Math.Distance.Between(world.x, world.y, a.x, a.y - 14);
+      if (d < bestDist) {
+        bestDist = d;
+        best = a;
+      }
+    }
+    if (best) {
+      // Second click on the Chief toggles Desk <-> Patrol
+      const wasSelected = this.selected === best;
+      best.dismissBubble();
+      this.selectAgent(best);
+      if (wasSelected && best.def.isChief) this.toggleCoS();
+      return;
+    }
+    for (const a of this.agents) a.dismissBubble();
+    this.selectAgent(null);
   }
 
   private panCamera(dt: number): void {
@@ -584,13 +657,13 @@ export class OfficeScene extends Phaser.Scene {
     if (this.demoMode) return;
     this.demoMode = true;
     const cam = this.cameras.main;
+    const fit = this.fitZoom();
     const spots = [
-      { x: 464, y: 560, zoom: 1.9 },
-      { x: 480, y: 236, zoom: 1.5 },
-      { x: 470, y: 380, zoom: 1.3 },
-      { x: 784, y: 480, zoom: 2 },
-      { x: 496, y: 330, zoom: 0.72 },
-      { x: 496, y: 304, zoom: 1.4 },
+      { x: 464, y: 450, zoom: 1.9 },
+      { x: 464, y: 140, zoom: 1.6 },
+      { x: 464, y: 270, zoom: 1.4 },
+      { x: 768, y: 500, zoom: 2 },
+      { x: 448, y: 320, zoom: fit },
     ];
     const step = (i: number): void => {
       if (!this.demoMode) return;

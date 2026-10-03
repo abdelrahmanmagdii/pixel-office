@@ -899,8 +899,9 @@ def draw_chibi(
     bob = 0
     leg_off = 0
     if pose == "walk":
-        bob = 0 if frame == 0 else -1
-        leg_off = 1 if frame == 1 else 0
+        # Two-frame stride: alternate which leg is lifted, body bobs on the pass.
+        bob = -1 if frame == 1 else 0
+        leg_off = frame
     elif pose == "type":
         bob = 0 if frame == 0 else 1
         leg_off = frame
@@ -910,57 +911,47 @@ def draw_chibi(
     hy = 1 + bob
 
     if pose in ("type", "sit"):
-        # clearly seated from behind: lower in frame, hips wide, arms to keyboard
+        # seated behind a desk, facing the camera; desk hides the legs
         soft_shadow(img, ox + 24, oy + 45, 28, 5)
-        # chair seat cushion peek
-        fill_rect(img, ox + 12, oy + 31 + bob, 24, 4, (50, 65, 90, 220))
-        outline_rect(img, ox + 12, oy + 31 + bob, 24, 4, OUTLINE)
-        # thighs splayed on seat (wider than walk)
-        fill_rect(img, ox + 11, oy + 30 + bob, 12, 7, pants)
-        fill_rect(img, ox + 25, oy + 30 + bob, 12, 7, pants)
-        outline_rect(img, ox + 11, oy + 30 + bob, 12, 7, OUTLINE)
-        outline_rect(img, ox + 25, oy + 30 + bob, 12, 7, OUTLINE)
-        # lower legs hanging / feet on floor
-        fill_rect(img, ox + 13, oy + 36 + bob, 8, 5, pants)
-        fill_rect(img, ox + 27, oy + 36 + bob, 8, 5, pants)
-        fill_rect(img, ox + 13, oy + 40 + bob, 8, 3, shoes)
-        fill_rect(img, ox + 27, oy + 40 + bob, 8, 3, shoes)
-        outline_rect(img, ox + 13, oy + 40 + bob, 8, 3, OUTLINE)
-        outline_rect(img, ox + 27, oy + 40 + bob, 8, 3, OUTLINE)
-
-        # torso lower than walk-up
+        fill_rect(img, ox + 12, oy + 31 + bob, 10, 8, pants)
+        fill_rect(img, ox + 26, oy + 31 + bob, 10, 8, pants)
+        outline_rect(img, ox + 12, oy + 31 + bob, 10, 8, OUTLINE)
+        outline_rect(img, ox + 26, oy + 31 + bob, 10, 8, OUTLINE)
         by = 18 + bob
-        draw_outfit_body(img, ox, oy, look, "up", by, bob, leg_off, "type")
-        # head slightly lower, from behind
+        draw_outfit_body(img, ox, oy, look, "down", by, bob, leg_off, "type")
         shy = hy + 2
-        draw_round_head(img, ox, oy, look, shy, hx, hw, hh - 1, "up")
-        draw_hair(img, ox, oy, look, "up", shy, hx, hw, hh - 1)
-        draw_hat(img, ox, oy, look, "up", shy, hx, hw, bob)
+        draw_round_head(img, ox, oy, look, shy, hx, hw, hh - 1, "down")
+        draw_hair(img, ox, oy, look, "down", shy, hx, hw, hh - 1)
+        draw_face(img, ox, oy, look, "down", shy, hx, hw)
+        draw_hat(img, ox, oy, look, "down", shy, hx, hw, bob)
+        fill_rect(img, ox + hx + 7, oy + shy + hh - 3, 6, 3, darken(skin, 0.9))
         return
 
     # --- standing / walking ---
     ly0 = oy + 33 + bob
     if facing in ("down", "up"):
-        fill_rect(img, ox + 14, ly0, 8, 9 + leg_off, pants)
-        fill_rect(img, ox + 26, ly0 + (1 - leg_off), 8, 9 + (1 - leg_off), pants)
-        outline_rect(img, ox + 14, ly0, 8, 9 + leg_off, OUTLINE)
-        outline_rect(img, ox + 26, ly0 + (1 - leg_off), 8, 9 + (1 - leg_off), OUTLINE)
-        fill_rect(img, ox + 14, ly0 + 8 + leg_off, 8, 3, shoes)
-        fill_rect(img, ox + 26, ly0 + 9 - leg_off, 8, 3, shoes)
-        outline_rect(img, ox + 14, ly0 + 8 + leg_off, 8, 3, OUTLINE)
-        outline_rect(img, ox + 26, ly0 + 9 - leg_off, 8, 3, OUTLINE)
-    elif facing == "left":
-        fill_rect(img, ox + 18 - leg_off, ly0, 7, 8, pants)
-        fill_rect(img, ox + 24 + leg_off, ly0 + 1, 7, 7, pants)
-        outline_rect(img, ox + 18 - leg_off, ly0, 7, 8, OUTLINE)
-        fill_rect(img, ox + 17 - leg_off, ly0 + 7, 7, 3, shoes)
-        outline_rect(img, ox + 17 - leg_off, ly0 + 7, 7, 3, OUTLINE)
+        # lifted leg is 3px shorter so the stride reads at office zoom
+        lift_l = 3 if leg_off == 0 else 0
+        lift_r = 3 - lift_l
+        for lx, lift in ((14, lift_l), (26, lift_r)):
+            fill_rect(img, ox + lx, ly0, 8, 9 - lift, pants)
+            outline_rect(img, ox + lx, ly0, 8, 9 - lift, OUTLINE)
+            fill_rect(img, ox + lx, ly0 + 8 - lift, 8, 3, shoes)
+            outline_rect(img, ox + lx, ly0 + 8 - lift, 8, 3, OUTLINE)
     else:
-        fill_rect(img, ox + 23 + leg_off, ly0, 7, 8, pants)
-        fill_rect(img, ox + 17 - leg_off, ly0 + 1, 7, 7, pants)
-        outline_rect(img, ox + 23 + leg_off, ly0, 7, 8, OUTLINE)
-        fill_rect(img, ox + 24 + leg_off, ly0 + 7, 7, 3, shoes)
-        outline_rect(img, ox + 24 + leg_off, ly0 + 7, 7, 3, OUTLINE)
+        # side view: feet split front/back, swap each frame
+        stride = 4 if leg_off == 0 else -4
+        sign = -1 if facing == "left" else 1
+        back_x = ox + 20 - sign * stride
+        front_x = ox + 21 + sign * stride
+        fill_rect(img, back_x, ly0, 7, 8, darken(pants, 0.8))
+        outline_rect(img, back_x, ly0, 7, 8, OUTLINE)
+        fill_rect(img, back_x, ly0 + 7, 7, 3, darken(shoes, 0.8))
+        outline_rect(img, back_x, ly0 + 7, 7, 3, OUTLINE)
+        fill_rect(img, front_x, ly0, 7, 9, pants)
+        outline_rect(img, front_x, ly0, 7, 9, OUTLINE)
+        fill_rect(img, front_x, ly0 + 8, 7, 3, shoes)
+        outline_rect(img, front_x, ly0 + 8, 7, 3, OUTLINE)
 
     by = 21 + bob
     draw_outfit_body(img, ox, oy, look, facing, by, bob, leg_off, "walk")
@@ -997,14 +988,10 @@ def make_agent_sheet(agent_id: str, _color: int) -> Image.Image:
         for f in (0, 1):
             draw_chibi(img, (col0 + f) * CHAR, 0, agent_id, facing, f, "walk")
     for f in (0, 1):
-        draw_chibi(img, (8 + f) * CHAR, 0, agent_id, "up", f, "type")
+        draw_chibi(img, (8 + f) * CHAR, 0, agent_id, "down", f, "type")
 
-    # save to BOTH legacy path and characters/
     name = f"agent-{agent_id}.png"
-    img.save(OUT / name)
     img.save(OUT_CHARS / name)
-    # helpful alias
-    img.save(OUT_CHARS / f"char-{agent_id}.png")
     print(f"Wrote {name} + characters/ ({img.width}x{img.height})")
     return img
 
@@ -1051,7 +1038,6 @@ def write_art_spec() -> None:
 
 - Primary: `agent-<id>.png`
 - Folder: `public/assets/characters/`
-- Legacy copies also at `public/assets/agent-<id>.png` until loader repoints
 
 ## Id → outfit
 
@@ -1074,8 +1060,6 @@ def write_art_spec() -> None:
 ```ts
 // preferred
 `/assets/characters/agent-${id}.png`
-// legacy still works
-`/assets/agent-${id}.png`
 ```
 
 Spritesheet config: `{ frameWidth: 48, frameHeight: 48 }`.
@@ -1108,32 +1092,14 @@ Style inspiration only (GBA / Pokémon Fire Red–style chibi proportions & Pixe
 See **`characters/ART_SPEC.md`** for full integration guide.
 
 - Folder: `public/assets/characters/agent-<id>.png` (preferred)
-- Legacy: `public/assets/agent-<id>.png` (same bytes; kept for current loader)
 - Frame **48×48**, sheet **480×48**, Phaser `frameWidth=48` locked
 - Cols: 0–1 down, 2–3 up, 4–5 left, 6–7 right, 8–9 sit/type
 
-## tileset.png — 224×32 (7 × 32×32 tiles, left → right)
+## Tiles and furniture
 
-| Index | Key (runtime) | Description |
-|------:|---------------|-------------|
-| 0 | `tile-floor` | Warm wood plank floor (main office) |
-| 1 | `tile-gray` | Gray office tile (optional / accent) |
-| 2 | `tile-wall` | Dark navy wall block |
-| 3 | `tile-glass` | Glass partition pane |
-| 4 | `tile-door` | Wooden door on wood floor |
-| 5 | `tile-carpet` | Warm CoS office carpet |
-| 6 | `tile-shadow` | Soft ellipse shadow accent |
-
-## Furniture (separate PNGs)
-
-| File | Size | Key | Notes |
-|------|------|-----|-------|
-| `desk.png` | 64×32 | `desk` | Wood desk + monitor + keyboard + mouse |
-| `chair.png` | 32×32 | `chair` | Office chair |
-| `plant.png` | 32×32 | `plant` | Terracotta pot + leafy plant |
-| `boxes.png` | 32×32 | `boxes` | Stacked cardboard boxes |
-| `bookshelf.png` | 32×48 | `bookshelf` | Tall shelf with colored spines |
-| `cooler.png` | 32×48 | `cooler` | Water cooler with jug |
+All runtime tiles and furniture live in `public/assets/furniture/` (see `FURNITURE_SPEC.md`).
+`tileset.png` is 288×32 (9 × 32×32 tiles, left → right): floor, hallway, wall, glass, door,
+carpet, shadow, wall face, window. Regenerate with `python3 scripts/generate_furniture_v5.py`.
 
 ## Agent ids & outfits
 
@@ -1154,7 +1120,9 @@ See **`characters/ART_SPEC.md`** for full integration guide.
 ## Regenerate
 
 ```bash
-python3 scripts/generate_assets.py
+python3 scripts/generate_assets.py        # character sheets
+python3 scripts/generate_furniture_v5.py  # tileset, plants, rug, clock
+python3 scripts/generate_bubbles.py       # speech bubbles
 ```
 """
     (OUT / "MANIFEST.md").write_text(text)

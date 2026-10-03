@@ -36,7 +36,6 @@ function showPanel(payload: PanelPayload | null): void {
   panelStatus.className = `status-${payload.status}`;
   document.getElementById('panel-location')!.textContent = payload.location;
   document.getElementById('panel-task')!.textContent = payload.lastTask;
-  document.getElementById('panel-id')!.textContent = payload.id;
   (document.getElementById('panel-swatch') as HTMLElement).style.background = payload.color;
 
   const api = pixelOfficeApi();

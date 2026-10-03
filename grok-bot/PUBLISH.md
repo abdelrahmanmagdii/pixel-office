@@ -20,13 +20,11 @@
 
 ## 3. Wire the link into the project
 
-1. Paste the link into `README.md` in place of `REPLACE_WITH_YOUR_TEMPLATE_LINK`.
-2. Paste it into `CONTEST.md`.
-3. Push.
+1. Add the link to `README.md` under the live URL as `- Bot template: <link>`.
+2. Push.
 
-## 4. Post the contest entry
+## 4. Share it
 
-1. Quote @grok's contest post. Say what the bot does in one line.
+1. Post what the bot does in one line.
 2. Paste the template link.
-3. Attach a 15–20 second screen recording of the office.
-4. Follow @grok and @bot from a public account.
+3. Attach a 15–20 second screen recording of the office (`Play tour` gives a ready-made camera path).

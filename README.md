@@ -5,7 +5,6 @@
 Pixel Office renders a Grok Bot team as a busy office floor. Agents wander, sit at desks, type, and share speech bubbles. The roster, statuses, and tasks live in one JSON file.
 
 - Live URL: <https://abdelrahmanmagdii.github.io/pixel-office/>
-- Bot template: <https://x.ai/bot/REPLACE_WITH_YOUR_TEMPLATE_LINK>
 
 ## 1. What this is
 

@@ -5,9 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from PIL import Image, ImageDraw
 
-ROOT = Path("/workspace/grok-bot-pixel-office")
+ROOT = Path(__file__).resolve().parents[1]
 FURN = ROOT / "public/assets/furniture"
-LEGACY = ROOT / "public/assets"
 REFS = ROOT / "refs"
 TILE = 32
 
@@ -34,18 +33,29 @@ def outline_rect(im, x0, y0, x1, y1, c):
 
 # --- Colors (v5) ---
 # Espresso / mahogany floor (much darker than v4 ~111,73,43)
-FLOOR_BASE = (58, 32, 20, 255)
-FLOOR_MID = (72, 40, 24, 255)
-FLOOR_HI = (88, 50, 30, 255)
-FLOOR_LINE = (28, 14, 8, 255)
-FLOOR_NAIL = (18, 10, 6, 255)
+FLOOR_BASE = (74, 45, 28, 255)
+FLOOR_MID = (80, 49, 31, 255)
+FLOOR_HI = (90, 56, 35, 255)
+FLOOR_LINE = (56, 33, 20, 255)
+FLOOR_JOINT = (50, 29, 18, 255)
+
+# Painted north wall face + wood wainscot
+WFACE = (58, 68, 92, 255)
+WFACE_HI = (68, 79, 105, 255)
+WFACE_DK = (44, 52, 72, 255)
+WAINSCOT = (70, 44, 28, 255)
+WAINSCOT_HI = (92, 60, 38, 255)
+BASEBOARD = (30, 20, 14, 255)
+SKY = (132, 186, 226, 255)
+SKY_HI = (196, 228, 248, 255)
+SKY_LO = (104, 160, 206, 255)
+FRAME = (226, 222, 210, 255)
+FRAME_DK = (150, 146, 136, 255)
 
 # Dark gray hallway tiles (polished)
-HALL_BASE = (62, 66, 74, 255)
-HALL_MID = (78, 82, 90, 255)
-HALL_HI = (110, 116, 126, 255)
-HALL_LINE = (40, 42, 48, 255)
-HALL_CORNER = (130, 136, 146, 255)
+HALL_BASE = (50, 54, 62, 255)
+HALL_MID = (54, 58, 66, 255)
+HALL_LINE = (40, 43, 50, 255)
 
 # Nearly-black / dark navy wall (no brick stripe)
 WALL = (18, 20, 32, 255)
@@ -70,45 +80,31 @@ LEAF_DK = (22, 64, 32, 255)
 
 
 def make_floor() -> Image.Image:
+    """Calm vertical planks: low-contrast seams, staggered end joints, no nails."""
     im = Image.new("RGBA", (TILE, TILE), (0, 0, 0, 0))
-    # vertical planks ~6–7 px wide
-    widths = [5, 6, 5, 6, 5, 5]
+    widths = [8, 8, 8, 8]
+    joints = [5, 21, 13, 28]
     x = 0
     for i, w in enumerate(widths):
         base = FLOOR_MID if i % 2 == 0 else FLOOR_BASE
         rect(im, x, 0, x + w, TILE, base)
-        # subtle grain
-        for gy in range(2, TILE, 4):
-            px(im, x + 1, gy, FLOOR_HI if i % 2 else FLOOR_MID)
-            px(im, x + w - 2, gy + 1, FLOOR_BASE)
-        # nails near top/bottom
-        nx = x + w // 2
-        px(im, nx, 3, FLOOR_NAIL)
-        px(im, nx, TILE - 4, FLOOR_NAIL)
-        # plank divider
-        if x + w < TILE:
-            for y in range(TILE):
-                px(im, x + w - 1, y, FLOOR_LINE)
+        for gy in range(1, TILE, 6):
+            px(im, x + 2 + (gy // 6) % 3, (gy + i * 3) % TILE, FLOOR_HI)
+        for jx in range(x, x + w - 1):
+            px(im, jx, joints[i], FLOOR_JOINT)
+        for y in range(TILE):
+            px(im, x + w - 1, y, FLOOR_LINE)
         x += w
     return im
 
 
 def make_hallway() -> Image.Image:
-    """Dark gray polished square floor tiles with TL highlight."""
+    """Flat slate runner, faint grout only."""
     im = Image.new("RGBA", (TILE, TILE), HALL_BASE)
-    # 2x2 grid of 16px tiles
-    for ty in (0, 16):
-        for tx in (0, 16):
-            rect(im, tx, ty, tx + 16, ty + 16, HALL_MID if (tx + ty) % 32 == 0 else HALL_BASE)
-            # top-left highlight corner
-            for i in range(5):
-                px(im, tx + 1 + i, ty + 1, HALL_CORNER if i < 2 else HALL_HI)
-                px(im, tx + 1, ty + 1 + i, HALL_CORNER if i < 2 else HALL_HI)
-            # soft edge shade
-            for i in range(16):
-                px(im, tx + 15, ty + i, HALL_LINE)
-                px(im, tx + i, ty + 15, HALL_LINE)
-    outline_rect(im, 0, 0, TILE, TILE, HALL_LINE)
+    rect(im, 0, 0, TILE, 16, HALL_MID)
+    for i in range(TILE):
+        px(im, i, 15, HALL_LINE)
+        px(im, i, 31, HALL_LINE)
     return im
 
 
@@ -125,6 +121,62 @@ def make_wall() -> Image.Image:
     for y in range(TILE):
         px(im, 0, y, WALL_EDGE)
         px(im, TILE - 1, y, WALL_EDGE)
+    return im
+
+
+def make_wallface() -> Image.Image:
+    """North wall face: painted upper wall, wood wainscot, dark baseboard."""
+    im = Image.new("RGBA", (TILE, TILE), WFACE)
+    rect(im, 0, 0, TILE, 2, WFACE_DK)
+    for x in range(0, TILE, 4):
+        px(im, x + 1, 6 + (x // 4) % 3, WFACE_HI)
+    rect(im, 0, 20, TILE, 29, WAINSCOT)
+    rect(im, 0, 20, TILE, 21, WAINSCOT_HI)
+    for x in (7, 15, 23, 31):
+        rect(im, x, 21, x + 1, 29, BASEBOARD)
+    rect(im, 0, 29, TILE, TILE, BASEBOARD)
+    return im
+
+
+def make_window() -> Image.Image:
+    """Wall face with a framed window (sky glass + diagonal glare)."""
+    im = make_wallface()
+    rect(im, 3, 2, 29, 19, FRAME)
+    rect(im, 5, 4, 27, 17, SKY)
+    rect(im, 5, 13, 27, 17, SKY_LO)
+    for i in range(6):
+        px(im, 8 + i, 10 - i, SKY_HI)
+        px(im, 9 + i, 10 - i, SKY_HI)
+    rect(im, 15, 4, 17, 17, FRAME)
+    rect(im, 2, 18, 30, 20, FRAME_DK)
+    outline_rect(im, 3, 2, 29, 19, FRAME_DK)
+    return im
+
+
+def make_rug() -> Image.Image:
+    """24×24 nine-slice rug (8px corners); light neutral so Phaser tint sets the zone colour."""
+    im = Image.new("RGBA", (24, 24), (210, 210, 210, 255))
+    outline_rect(im, 0, 0, 24, 24, (120, 120, 120, 255))
+    outline_rect(im, 2, 2, 22, 22, (250, 250, 250, 255))
+    outline_rect(im, 3, 3, 21, 21, (160, 160, 160, 255))
+    for i in range(5, 19, 2):
+        px(im, i, 1, (250, 250, 250, 255))
+        px(im, i, 22, (250, 250, 250, 255))
+        px(im, 1, i, (250, 250, 250, 255))
+        px(im, 22, i, (250, 250, 250, 255))
+    return im
+
+
+def make_clock() -> Image.Image:
+    """16×16 wall clock face (hands are drawn live in the scene)."""
+    im = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    d.ellipse([0, 0, 15, 15], fill=OUT)
+    d.ellipse([1, 1, 14, 14], fill=(200, 160, 70, 255))
+    d.ellipse([2, 2, 13, 13], fill=(246, 242, 230, 255))
+    for x, y in ((7, 3), (12, 7), (7, 12), (3, 7)):
+        px(im, x, y, OUT)
+        px(im, x + 1 if x in (7,) else x, y + 1 if y in (7,) else y, OUT)
     return im
 
 
@@ -264,6 +316,53 @@ def make_desk_empty() -> Image.Image:
     return im
 
 
+def make_desk_back(w: int, kind: str) -> Image.Image:
+    """Desk seen from the visitor side: agent sits north, screen backs face the camera."""
+    im = Image.new("RGBA", (w, 64), (0, 0, 0, 0))
+    top, top_hi, edge, leg = (150, 98, 58, 255), (172, 118, 72, 255), (104, 64, 36, 255), (38, 30, 28, 255)
+    rect(im, 1, 16, w - 1, 44, top)
+    rect(im, 1, 16, w - 1, 18, top_hi)
+    for x in range(8, w - 8, 22):
+        rect(im, x, 24, x + 10, 25, (138, 90, 52, 255))
+    rect(im, 1, 44, w - 1, 51, edge)
+    outline_rect(im, 0, 15, w, 52, OUT)
+    for lx in (4, w - 10):
+        rect(im, lx, 52, lx + 6, 62, leg)
+        outline_rect(im, lx - 1, 51, lx + 7, 63, OUT)
+    # desk clutter
+    rect(im, 7, 30, 19, 38, (236, 232, 220, 255))
+    outline_rect(im, 6, 29, 20, 39, OUT)
+    rect(im, w - 17, 28, w - 10, 37, (236, 186, 64, 255))
+    outline_rect(im, w - 18, 27, w - 9, 38, OUT)
+
+    def monitor(cx: int, mw: int) -> None:
+        x0, x1 = cx - mw // 2, cx + mw // 2
+        rect(im, x0, 1, x1, 21, (74, 82, 98, 255))
+        rect(im, x0 + 1, 2, x1 - 1, 3, (104, 114, 132, 255))
+        for vy in (8, 11, 14):
+            rect(im, cx - 6, vy, cx + 6, vy + 1, (58, 64, 78, 255))
+        outline_rect(im, x0 - 1, 0, x1 + 1, 22, OUT)
+        rect(im, cx - 2, 22, cx + 2, 28, (60, 66, 80, 255))
+        rect(im, cx - 7, 27, cx + 7, 30, (60, 66, 80, 255))
+        outline_rect(im, cx - 8, 26, cx + 8, 31, OUT)
+        px(im, x1 - 3, 18, (110, 231, 183, 255))
+
+    cx = w // 2
+    if kind == "monitor":
+        monitor(cx, 34)
+    elif kind == "laptop":
+        rect(im, cx - 15, 8, cx + 15, 27, (176, 182, 194, 255))
+        rect(im, cx - 14, 9, cx + 14, 10, (206, 212, 222, 255))
+        rect(im, cx - 2, 15, cx + 2, 19, (236, 240, 246, 255))
+        outline_rect(im, cx - 16, 7, cx + 16, 28, OUT)
+        rect(im, cx - 17, 28, cx + 17, 31, (140, 146, 158, 255))
+        outline_rect(im, cx - 18, 27, cx + 18, 32, OUT)
+    else:  # dual
+        monitor(cx - 20, 34)
+        monitor(cx + 20, 34)
+    return im
+
+
 def build_tileset() -> Image.Image:
     tiles = [
         make_floor(),
@@ -273,6 +372,8 @@ def build_tileset() -> Image.Image:
         make_door(),
         make_carpet(),
         make_shadow(),
+        make_wallface(),
+        make_window(),
     ]
     sheet = Image.new("RGBA", (TILE * len(tiles), TILE), (0, 0, 0, 0))
     for i, t in enumerate(tiles):
@@ -321,18 +422,22 @@ def save(im: Image.Image, path: Path):
 def main():
     tileset = build_tileset()
     save(tileset, FURN / "tileset.png")
-    save(tileset, LEGACY / "tileset.png")
 
     plant = make_plant(64, "bush")
     plant_tall = make_plant(64, "tall")
     plant_large = make_plant(64, "large")
     for name, im in [("plant.png", plant), ("plant-tall.png", plant_tall), ("plant-large.png", plant_large)]:
         save(im, FURN / name)
-        save(im, LEGACY / name)
+
+    save(make_rug(), FURN / "rug.png")
+    save(make_clock(), FURN / "clock.png")
+
+    save(make_desk_back(96, "monitor"), FURN / "desk-back.png")
+    save(make_desk_back(96, "laptop"), FURN / "desk-laptop-back.png")
+    save(make_desk_back(128, "dual"), FURN / "desk-boss-back.png")
 
     desk_empty = make_desk_empty()
     save(desk_empty, FURN / "desk-empty.png")
-    save(desk_empty, LEGACY / "desk-empty.png")
 
     preview = build_preview(tileset, plant, plant_tall, plant_large, desk_empty)
     # also save 2x nearest for readability

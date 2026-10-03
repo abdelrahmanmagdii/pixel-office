@@ -11,6 +11,8 @@ export const TILE_FRAME = {
   door: 4,
   carpet: 5,
   shadow: 6,
+  wallface: 7,
+  window: 8,
 } as const;
 
 /** Preload tiles + furniture from the app's public assets; characters stay frozen. */
@@ -27,8 +29,12 @@ export function preloadAssets(scene: Phaser.Scene): void {
     'desk-laptop',
     'desk-boss',
     'desk-empty',
+    'desk-back',
+    'desk-laptop-back',
+    'desk-boss-back',
     'chair',
-    'stool',
+    'rug',
+    'clock',
     'plant',
     'plant-tall',
     'plant-succulent',
