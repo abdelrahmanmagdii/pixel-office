@@ -82,6 +82,7 @@ html, body, #app {
   padding: 0.45rem 0.85rem;
   border-radius: 6px;
   font-size: 0.8rem;
+  white-space: nowrap;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, transform 0.1s;
 }
@@ -107,6 +108,7 @@ html, body, #app {
 
 #game-container canvas {
   display: block;
+  touch-action: none;
   image-rendering: pixelated;
 }
 
@@ -114,7 +116,7 @@ html, body, #app {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  width: min(300px, calc(100% - 2rem));
+  width: min(260px, calc(100% - 2rem));
   background: color-mix(in srgb, var(--panel) 92%, transparent);
   backdrop-filter: blur(8px);
   border: 1px solid var(--border);
@@ -195,6 +197,8 @@ html, body, #app {
   transition: border-color 0.15s, background 0.15s;
 }
 #panel-actions button:hover { border-color: var(--accent2); }
+#panel-actions button.hidden { display: none; }
+#panel-tip { margin-top: 0.75rem; font-size: 0.68rem; }
 #panel-actions button.on { border-color: var(--accent); color: var(--accent); background: #16302a; }
 
 #customize-modal {
@@ -250,6 +254,39 @@ html, body, #app {
   background: #101820;
 }
 
+.hint-touch { display: none; }
+
 @media (max-width: 720px) {
-  #topbar { flex-direction: column; align-items: flex-start; }
+  #topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+  }
+  .brand p { display: none; }
+  .logo { width: 1.5rem; height: 1.5rem; }
+  #demo-controls {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  #demo-controls::-webkit-scrollbar { display: none; }
+  #demo-controls button { flex: 0 0 auto; padding: 0.4rem 0.7rem; font-size: 0.75rem; }
+  #agent-panel {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: 55%;
+    overflow-y: auto;
+    border-radius: 12px 12px 0 0;
+    padding: 0.85rem 1rem;
+  }
+  #panel-swatch { width: 1.75rem; height: 1.75rem; margin-bottom: 0.4rem; }
+  #agent-panel dl { grid-template-columns: 1fr 1fr; }
+  #agent-panel dl > div:last-child { grid-column: 1 / -1; }
+  .hint-desktop { display: none; }
+  .hint-touch { display: inline; }
 }

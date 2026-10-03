@@ -4,9 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
-ROOT = Path("/workspace/grok-bot-pixel-office")
+ROOT = Path(__file__).resolve().parents[1]
 FURN = ROOT / "public/assets/furniture"
-LEGACY = ROOT / "public/assets"
 REFS = ROOT / "refs"
 
 CREAM = (255, 248, 231, 255)
@@ -191,24 +190,19 @@ def save(im: Image.Image, path: Path):
 def main():
     base = make_9slice(48)
     save(base, FURN / "bubble-9slice.png")
-    save(base, LEGACY / "bubble-9slice.png")
 
     for name, accent in [("idle", IDLE), ("waiting", WAITING), ("working", WORKING)]:
         im = make_9slice(48, accent=accent)
         save(im, FURN / f"bubble-9slice-{name}.png")
-        save(im, LEGACY / f"bubble-9slice-{name}.png")
 
     frame = make_frame_fixed(96, 28)
     save(frame, FURN / "bubble-frame.png")
-    save(frame, LEGACY / "bubble-frame.png")
 
     tail = make_tail()
     save(tail, FURN / "bubble-tail.png")
-    save(tail, LEGACY / "bubble-tail.png")
     for name, accent in [("idle", IDLE), ("waiting", WAITING), ("working", WORKING)]:
         t = make_tail(accent=accent)
         save(t, FURN / f"bubble-tail-{name}.png")
-        save(t, LEGACY / f"bubble-tail-{name}.png")
 
     preview = compose_preview()
     save(preview, REFS / "bubble-preview.png")

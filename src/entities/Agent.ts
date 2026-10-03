@@ -15,6 +15,11 @@ import { findPath, randomWalkableTile } from '../systems/Pathfinding';
 export type AgentLocation = 'floor' | 'office';
 type Facing = 'down' | 'up' | 'left' | 'right';
 
+const COFFEE_LINES = ['Coffee run.', 'Refilling…', 'One more cup.', 'Brb, caffeine.'];
+const TYPING_FRAMES = ['   ', '.  ', '.. ', '...'];
+/** Nameplate y: under the feet when standing, under the desk front when seated. */
+const LABEL_Y = { standing: 10, atDesk: 56 };
+
 export class Agent extends Phaser.GameObjects.Container {
   readonly def: AgentDef;
   status: AgentStatus;
@@ -24,6 +29,10 @@ export class Agent extends Phaser.GameObjects.Container {
   private sprite: Phaser.GameObjects.Sprite;
   private bubble?: Phaser.GameObjects.Container;
   private label: Phaser.GameObjects.Text;
+  private typing: Phaser.GameObjects.Text;
+  private typingClock = 0;
+  private atDesk = false;
+  private coffeeSpot: { col: number; row: number } | null = null;
   private path: { col: number; row: number }[] = [];
   private moveSpeed = 70; // px/sec
   private idleTimer = 0;
@@ -74,13 +83,32 @@ export class Agent extends Phaser.GameObjects.Container {
       })
       .setOrigin(0.5, 0);
 
+    this.typing = scene.add
+      .text(0, -42, TYPING_FRAMES[0], {
+        fontFamily: 'monospace',
+        fontSize: '12px',
+        fontStyle: 'bold',
+        color: '#f8fafc',
+        stroke: '#0f172a',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5, 1)
+      .setVisible(false);
+
     this.selectedRing = scene.add.graphics();
     this.selectedRing.setVisible(false);
     this.hoverRing = scene.add.graphics();
     this.hoverRing.setVisible(false);
     this.statusDot = scene.add.graphics();
 
-    this.add([this.hoverRing, this.selectedRing, this.sprite, this.statusDot, this.label]);
+    this.add([
+      this.hoverRing,
+      this.selectedRing,
+      this.sprite,
+      this.statusDot,
+      this.label,
+      this.typing,
+    ]);
     this.setSize(TILE, TILE);
     this.setInteractive(
       new Phaser.Geom.Rectangle(-24, -44, 48, 52),
@@ -137,6 +165,15 @@ export class Agent extends Phaser.GameObjects.Container {
 
   setWanderRegion(region: { x0: number; y0: number; x1: number; y1: number } | null): void {
     this.wanderRegion = region;
+  }
+
+  setCoffeeSpot(spot: { col: number; row: number } | null): void {
+    this.coffeeSpot = spot;
+  }
+
+  /** True while seated (or posted) at a desk with the screen on. */
+  isTyping(): boolean {
+    return this.status === 'working' && this.atDesk && !this.path.length;
   }
 
   getTile(): { col: number; row: number } {
@@ -220,6 +257,7 @@ export class Agent extends Phaser.GameObjects.Container {
 
   updateAgent(dt: number): void {
     this.setDepth(1000 + Math.floor(this.y / TILE));
+    this.updateTyping(dt);
 
     if (this.path.length) {
       this.followPath(dt);
@@ -252,7 +290,15 @@ export class Agent extends Phaser.GameObjects.Container {
 
     // idle wander — visible motion within ~5–10s
     this.idleTimer -= dt;
-    if (this.idleTimer <= 0) {
+    if (this.idleTimer <= 0 && this.coffeeSpot && Math.random() < 0.2) {
+      const spot = this.coffeeSpot;
+      this.walkTo(spot.col, spot.row, () => {
+        this.facing = 'up';
+        this.sprite.setTexture(this.sheetKey(), 2);
+        this.showBubble(Phaser.Utils.Array.GetRandom(COFFEE_LINES));
+      });
+      this.idleTimer = 5 + Math.random() * 3;
+    } else if (this.idleTimer <= 0) {
       const target = randomWalkableTile(this.grid, [this.getTile()], this.wanderRegion ?? undefined);
       if (target) this.walkTo(target.col, target.row);
       // ~2–5s between walks so motion stays noticeable
@@ -264,6 +310,19 @@ export class Agent extends Phaser.GameObjects.Container {
     } else {
       this.tickOccasionalBubble(dt, this.idleLines(), 7, 12);
     }
+  }
+
+  private updateTyping(dt: number): void {
+    const on = this.isTyping() && !this.bubble;
+    this.typing.setVisible(on);
+    if (!on) return;
+    this.typingClock += dt;
+    this.typing.setText(TYPING_FRAMES[Math.floor(this.typingClock * 3) % TYPING_FRAMES.length]);
+  }
+
+  private setAtDesk(on: boolean): void {
+    this.atDesk = on;
+    this.label.setY(on ? LABEL_Y.atDesk : LABEL_Y.standing);
   }
 
   private tickOccasionalBubble(
@@ -297,14 +356,17 @@ export class Agent extends Phaser.GameObjects.Container {
     return WAITING_LINES_BY_ID[this.def.id] ?? WAITING_LINES;
   }
 
+  /** Seated north of the desk, facing the camera. */
   private sitAndType(): void {
-    this.facing = 'up';
+    this.facing = 'down';
+    this.setAtDesk(true);
     this.sprite.play(`${this.sheetKey()}-type`, true);
   }
 
   /** Chief at boss desk: stand facing DOWN toward camera/user (sheet frame 0). */
   private standFacingUser(): void {
     this.facing = 'down';
+    this.setAtDesk(this.location === 'office');
     this.sprite.stop();
     this.sprite.setTexture(this.sheetKey(), 0);
   }
@@ -322,6 +384,7 @@ export class Agent extends Phaser.GameObjects.Container {
   }
 
   private walkTo(col: number, row: number, onArrive?: () => void): void {
+    this.setAtDesk(false);
     const from = this.getTile();
     this.path = findPath(this.grid, from.col, from.row, col, row);
     (this as unknown as { _onArrive?: () => void })._onArrive = onArrive;

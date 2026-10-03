@@ -9,32 +9,14 @@ Style inspiration only (GBA / Pokémon Fire Red–style chibi proportions & Pixe
 See **`characters/ART_SPEC.md`** for full integration guide.
 
 - Folder: `public/assets/characters/agent-<id>.png` (preferred)
-- Legacy: `public/assets/agent-<id>.png` (same bytes; kept for current loader)
 - Frame **48×48**, sheet **480×48**, Phaser `frameWidth=48` locked
 - Cols: 0–1 down, 2–3 up, 4–5 left, 6–7 right, 8–9 sit/type
 
-## tileset.png — 224×32 (7 × 32×32 tiles, left → right)
+## Tiles and furniture
 
-| Index | Key (runtime) | Description |
-|------:|---------------|-------------|
-| 0 | `tile-floor` | Warm wood plank floor (main office) |
-| 1 | `tile-gray` | Gray office tile (optional / accent) |
-| 2 | `tile-wall` | Dark navy wall block |
-| 3 | `tile-glass` | Glass partition pane |
-| 4 | `tile-door` | Wooden door on wood floor |
-| 5 | `tile-carpet` | Warm CoS office carpet |
-| 6 | `tile-shadow` | Soft ellipse shadow accent |
-
-## Furniture (separate PNGs)
-
-| File | Size | Key | Notes |
-|------|------|-----|-------|
-| `desk.png` | 64×32 | `desk` | Wood desk + monitor + keyboard + mouse |
-| `chair.png` | 32×32 | `chair` | Office chair |
-| `plant.png` | 32×32 | `plant` | Terracotta pot + leafy plant |
-| `boxes.png` | 32×32 | `boxes` | Stacked cardboard boxes |
-| `bookshelf.png` | 32×48 | `bookshelf` | Tall shelf with colored spines |
-| `cooler.png` | 32×48 | `cooler` | Water cooler with jug |
+All runtime tiles and furniture live in `public/assets/furniture/` (see `FURNITURE_SPEC.md`).
+`tileset.png` is 288×32 (9 × 32×32 tiles, left → right): floor, hallway, wall, glass, door,
+carpet, shadow, wall face, window. Regenerate with `python3 scripts/generate_furniture_v5.py`.
 
 ## Agent ids & outfits
 
@@ -55,5 +37,7 @@ See **`characters/ART_SPEC.md`** for full integration guide.
 ## Regenerate
 
 ```bash
-python3 scripts/generate_assets.py
+python3 scripts/generate_assets.py        # character sheets
+python3 scripts/generate_furniture_v5.py  # tileset, plants, rug, clock
+python3 scripts/generate_bubbles.py       # speech bubbles
 ```

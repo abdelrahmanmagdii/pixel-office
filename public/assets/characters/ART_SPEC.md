@@ -24,7 +24,6 @@
 
 - Primary: `agent-<id>.png`
 - Folder: `public/assets/characters/`
-- Legacy copies also at `public/assets/agent-<id>.png` until loader repoints
 
 ## Id → outfit
 
@@ -47,8 +46,6 @@
 ```ts
 // preferred
 `/assets/characters/agent-${id}.png`
-// legacy still works
-`/assets/agent-${id}.png`
 ```
 
 Spritesheet config: `{ frameWidth: 48, frameHeight: 48 }`.

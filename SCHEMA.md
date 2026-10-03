@@ -12,7 +12,7 @@ One schema for the roster. `public/agents.json`, `bots.example.json`, `scripts/m
       "name": "Engineer",
       "role": "Builds features and keeps CI healthy",
       "color": "#60a5fa",
-      "desk": { "col": 8, "row": 6 },
+      "desk": { "col": 8, "row": 3 },
       "isChief": false,
       "lastTask": "Triaged open pull requests",
       "status": "working",
@@ -33,7 +33,7 @@ One schema for the roster. `public/agents.json`, `bots.example.json`, `scripts/m
 | `agents[].name` | string | yes | Short display name. |
 | `agents[].role` | string | no | One line. |
 | `agents[].color` | string | no | Hex. Used for the desk nameplate and the panel swatch. |
-| `agents[].desk` | object | no | `{ col, row }` seat tile. The map grid is 28 × 20 tiles. |
+| `agents[].desk` | object | no | `{ col, row }` seat tile. The desk is drawn on the two rows south of the seat, so the agent faces the camera. The map grid is 28 × 20 tiles. |
 | `agents[].isChief` | boolean | no | True only for the Chief, who stands at the boss desk. |
 | `agents[].lastTask` | string | no | Qualitative. No invented metrics or percentages. |
 | `agents[].status` | string | no | `idle`, `working`, or `waiting`. |
@@ -49,14 +49,14 @@ Unknown ids render with a fallback sprite at load. Add `public/assets/characters
 
 | Index | Position | Use |
 |---|---|---|
-| 0 | `{ col: 14, row: 17 }` | Chief (boss desk) |
-| 1 | `{ col: 8, row: 6 }` | Engineering row |
-| 2 | `{ col: 12, row: 6 }` | Engineering row |
-| 3 | `{ col: 16, row: 6 }` | Engineering row |
-| 4 | `{ col: 20, row: 6 }` | Engineering row |
-| 5 | `{ col: 8, row: 10 }` | Operations row |
-| 6 | `{ col: 12, row: 10 }` | Operations row |
-| 7 | `{ col: 16, row: 10 }` | Operations row |
-| 8 | `{ col: 20, row: 10 }` | Operations row |
-| 9 | `{ col: 8, row: 14 }` | Product row |
-| 10 | `{ col: 12, row: 14 }` | Product row |
+| 0 | `{ col: 14, row: 14 }` | Chief (boss desk) |
+| 1 | `{ col: 8, row: 3 }` | Engineering row |
+| 2 | `{ col: 12, row: 3 }` | Engineering row |
+| 3 | `{ col: 16, row: 3 }` | Engineering row |
+| 4 | `{ col: 20, row: 3 }` | Engineering row |
+| 5 | `{ col: 8, row: 7 }` | Operations row |
+| 6 | `{ col: 12, row: 7 }` | Operations row |
+| 7 | `{ col: 16, row: 7 }` | Operations row |
+| 8 | `{ col: 20, row: 7 }` | Operations row |
+| 9 | `{ col: 8, row: 11 }` | Product row |
+| 10 | `{ col: 12, row: 11 }` | Product row |
