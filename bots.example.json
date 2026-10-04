@@ -7,7 +7,6 @@
       "name": "Chief",
       "role": "Coordinates the floor and priorities",
       "color": "#f59e0b",
-      "desk": { "col": 14, "row": 17 },
       "isChief": true,
       "lastTask": "Synced weekly team priorities",
       "status": "working"
@@ -17,17 +16,18 @@
       "name": "Engineer",
       "role": "Builds features and keeps CI healthy",
       "color": "#60a5fa",
-      "desk": { "col": 8, "row": 6 },
       "lastTask": "Triaged open pull requests",
       "status": "idle",
-      "workingLines": ["Rebasing the PR…", "Pushing a fix…"]
+      "workingLines": [
+        "Rebasing the PR…",
+        "Pushing a fix…"
+      ]
     },
     {
       "id": "linkedin",
       "name": "Designer",
       "role": "UI polish, layouts, and visual craft",
       "color": "#38bdf8",
-      "desk": { "col": 12, "row": 6 },
       "lastTask": "Refined desk-label hierarchy",
       "status": "working"
     }

@@ -1,13 +1,20 @@
 import './style.css';
 import Phaser from 'phaser';
-import { loadOfficeConfig, officeTitle, officeSubtitle } from './data/agents';
+import {
+  fetchOfficeConfig,
+  loadOfficeConfig,
+  officeTitle,
+  officeSubtitle,
+  setOfficeConfig,
+} from './data/agents';
+import type { OfficeConfig } from './data/agents';
 import { OfficeScene } from './scenes/OfficeScene';
 import type { PanelPayload, PixelOfficeApi } from './scenes/OfficeScene';
 import type { AgentStatus } from './data/agents';
 
 function applyChrome(): void {
   document.title = officeTitle;
-  const h1 = document.querySelector('#topbar h1');
+  const h1 = document.getElementById('office-title');
   const sub = document.querySelector('#topbar .brand p');
   if (h1) h1.textContent = officeTitle;
   if (sub) sub.textContent = officeSubtitle;
@@ -56,8 +63,77 @@ function showPanel(payload: PanelPayload | null): void {
   });
 }
 
+type FeedState = 'live' | 'offline';
+
+function setFeedPill(state: FeedState, detail: string): void {
+  const pill = document.getElementById('live-status');
+  if (!pill) return;
+  pill.classList.remove('hidden', 'live', 'offline');
+  pill.classList.add(state);
+  pill.textContent = state === 'live' ? 'LIVE' : 'OFFLINE';
+  pill.title = detail;
+}
+
+/**
+ * Poll the roster and reconcile changes into the running scene.
+ * Feed URL: `?feed=` → `feed` in agents.json → agents.json itself (picks up redeploys).
+ * Interval: `?poll=` seconds → `pollSeconds` → 15s with a feed, 60s without. Min 5s.
+ * On errors the last good roster stays on screen.
+ */
+function startPolling(url: string, isFeed: boolean, seconds: number, lastRaw: string): void {
+  let last = lastRaw;
+  let busy = false;
+  const tick = async (): Promise<void> => {
+    if (busy || document.hidden) return;
+    busy = true;
+    try {
+      const { cfg, raw } = await fetchOfficeConfig(url);
+      if (raw !== last) {
+        last = raw;
+        pixelOfficeApi()?.applyRoster(cfg);
+        applyChrome();
+      }
+      if (isFeed) setFeedPill('live', `Updated ${new Date().toLocaleTimeString()} · every ${seconds}s`);
+    } catch (err) {
+      console.warn('[pixel-office] feed poll failed; keeping last roster', err);
+      if (isFeed) setFeedPill('offline', `Feed unreachable (${String(err)}); showing last known roster`);
+    } finally {
+      busy = false;
+    }
+  };
+  window.setInterval(() => void tick(), seconds * 1000);
+  document.addEventListener('visibilitychange', () => void tick());
+  (window as unknown as { __pixelOfficeFeed: unknown }).__pixelOfficeFeed = { url, seconds, pollNow: tick };
+}
+
+async function loadInitialRoster(): Promise<{ url: string; isFeed: boolean; seconds: number; raw: string }> {
+  const q = new URLSearchParams(window.location.search);
+  const staticUrl = `${import.meta.env.BASE_URL}agents.json`;
+  let base: OfficeConfig;
+  let raw = '';
+  try {
+    ({ cfg: base, raw } = await fetchOfficeConfig(staticUrl));
+    setOfficeConfig(base);
+  } catch {
+    base = await loadOfficeConfig();
+  }
+  const feed = q.get('feed') || base.feed;
+  const seconds = Math.max(5, Number(q.get('poll')) || base.pollSeconds || (feed ? 15 : 60));
+  if (feed) {
+    try {
+      const snap = await fetchOfficeConfig(feed);
+      setOfficeConfig(snap.cfg);
+      raw = snap.raw;
+      setFeedPill('live', `Connected · every ${seconds}s`);
+    } catch (err) {
+      setFeedPill('offline', `Feed unreachable (${String(err)}); showing agents.json`);
+    }
+  }
+  return { url: feed || staticUrl, isFeed: Boolean(feed), seconds, raw };
+}
+
 async function boot(): Promise<void> {
-  await loadOfficeConfig();
+  const feed = await loadInitialRoster();
   applyChrome();
 
   const gameParent = document.getElementById('game-container')!;
@@ -88,6 +164,8 @@ async function boot(): Promise<void> {
       onSelect: showPanel,
     },
   });
+
+  startPolling(feed.url, feed.isFeed, feed.seconds, feed.raw);
 
   panelClose.addEventListener('click', () => showPanel(null));
 
@@ -127,7 +205,7 @@ async function boot(): Promise<void> {
   const modal = document.getElementById('customize-modal')!;
   const ta = document.getElementById('customize-json') as HTMLTextAreaElement;
   btnCustomize.addEventListener('click', async () => {
-    const res = await fetch(`${import.meta.env.BASE_URL}agents.json`);
+    const res = await fetch(feed.url, { cache: 'no-store' });
     ta.value = JSON.stringify(await res.json(), null, 2);
     modal.classList.remove('hidden');
   });

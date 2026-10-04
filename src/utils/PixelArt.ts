@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { AGENTS, BUILTIN_AGENT_IDS } from '../data/agents';
+import { BUILTIN_AGENT_IDS } from '../data/agents';
 import { TILE } from './constants';
 
 /** Frame indices into the public tileset (32×32, left → right). */
@@ -64,10 +64,10 @@ export function preloadAssets(scene: Phaser.Scene): void {
 
   /** Agent chibi frames are 48×48 (tiles stay 32). Characters locked. */
   const AGENT_FRAME = 48;
-  for (const a of AGENTS) {
-    // Unknown ids reuse a fallback sheet so custom rosters still render.
-    const file = BUILTIN_AGENT_IDS.includes(a.id) ? a.id : a.isChief ? 'cos' : 'swe';
-    scene.load.spritesheet(`agent-${a.id}`, `${base}assets/characters/agent-${file}.png`, {
+  // Every built-in look is loaded so agents that join live can wear any of them (see lookFor).
+  for (const file of BUILTIN_AGENT_IDS) {
+    if (scene.textures.exists(`look-${file}`)) continue;
+    scene.load.spritesheet(`look-${file}`, `${base}assets/characters/agent-${file}.png`, {
       frameWidth: AGENT_FRAME,
       frameHeight: AGENT_FRAME,
     });
@@ -79,9 +79,8 @@ export function preloadAssets(scene: Phaser.Scene): void {
  * Sheet cols: 0–1 down, 2–3 up, 4–5 left, 6–7 right, 8–9 sit/type.
  */
 export function createAgentAnims(scene: Phaser.Scene): void {
-  for (const a of AGENTS) {
-    const id = a.id;
-    const sheet = `agent-${id}`;
+  for (const id of BUILTIN_AGENT_IDS) {
+    const sheet = `look-${id}`;
     const ensure = (key: string, start: number, end: number, frameRate: number) => {
       if (scene.anims.exists(key)) return;
       scene.anims.create({

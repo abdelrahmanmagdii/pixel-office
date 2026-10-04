@@ -3,12 +3,14 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Pixel Office — interactive agent floor (Phaser + Vite)",
+  "description": "Pixel Office \u2014 interactive agent floor (Phaser + Vite)",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "map-bots": "node scripts/map-bots.mjs"
+    "map-bots": "node scripts/map-bots.mjs",
+    "feed:dev": "node scripts/feed-dev.mjs",
+    "test": "node --test tests/*.test.mjs"
   },
   "devDependencies": {
     "typescript": "~6.0.2",

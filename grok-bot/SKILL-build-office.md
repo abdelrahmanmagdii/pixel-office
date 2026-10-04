@@ -22,22 +22,25 @@ Sequence:
 3. Write `public/agents.json` from the schema in `SCHEMA.md`:
 
    - `officeTitle` and `subtitle`: header text.
-   - `agents[]` with: `id` (lowercase slug), `name`, `role`, `color` (hex), `desk` (`{ col, row }`), `isChief`, `lastTask` (qualitative only), `status` (`idle`, `working`, or `waiting`), and optional `workingLines`.
-   - Reuse the standard desk positions from `SCHEMA.md`. Add new desks for custom bots.
+   - `agents[]` with: `id` (lowercase slug), `name`, `role`, `color` (hex), `isChief` (one agent), `lastTask` (qualitative only), `status` (`idle`, `working`, or `waiting`), and optional `workingLines` or `sprite`.
+   - Leave out `desk`. The office assigns desks and grows the floor for big teams.
+   - For live updates, add `"feed": "<worker url>"` (see step 7).
 
-4. Keep `id` values that match existing art: `cos`, `github`, `linkedin`, `x`, `reddit`, `gmail`, `travel`, `deal`, `flight`, `optimizer`, `swe`. Unknown ids still render with a fallback sprite, so custom rosters work without new art. To give an id its own look, add `public/assets/characters/agent-<id>.png`.
+4. Keep `id` values that match existing art: `cos`, `github`, `linkedin`, `x`, `reddit`, `gmail`, `travel`, `deal`, `flight`, `optimizer`, `swe`. Other ids get a built-in look automatically; set `sprite` to pick one.
 5. Push to `main`.
 6. Return the live URL: `https://<username>.github.io/<repo>/`.
+7. Optional, for live status: deploy the feed in `feed/` (see `feed/README.md`, free Cloudflare tier). Ask the user to set the `FEED_TOKEN` secret themselves. Put the worker URL in `agents.json` as `feed`, push, and publish the first snapshot with `PUT /`.
 
 Validate:
 
 - `agents.json` parses as valid JSON.
-- Every `id` has a sprite sheet, or matches an existing sheet.
+- Every `id` is unique, and at most one agent has `isChief: true`.
 - No invented metrics or percentages appear in `lastTask`.
 
 Approvals:
 
 - The push requires approval.
+- Never write `FEED_TOKEN` into the repo or `agents.json`.
 
 Return:
 

@@ -17,19 +17,6 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 
-const DESKS = [
-  { col: 14, row: 17 }, // chief / boss desk
-  { col: 8, row: 6 },
-  { col: 12, row: 6 },
-  { col: 16, row: 6 },
-  { col: 20, row: 6 },
-  { col: 8, row: 10 },
-  { col: 12, row: 10 },
-  { col: 16, row: 10 },
-  { col: 20, row: 10 },
-  { col: 8, row: 14 },
-  { col: 12, row: 14 },
-];
 
 const PALETTE = [
   '#60a5fa', '#38bdf8', '#fb923c', '#f87171', '#34d399',
@@ -54,7 +41,6 @@ function fromNames(names) {
       name,
       role: '',
       color: PALETTE[i % PALETTE.length],
-      desk: DESKS[i % DESKS.length],
       isChief: i === 0,
       lastTask: 'Ready',
       status: 'idle',
@@ -80,9 +66,7 @@ function fromJson(data) {
     color: typeof b.color === 'string'
       ? b.color
       : `#${Number(b.color ?? 0x94a3b8).toString(16).padStart(6, '0')}`,
-    desk: b.desk && typeof b.desk === 'object'
-      ? { col: Number(b.desk.col) || DESKS[i % DESKS.length].col, row: Number(b.desk.row) || DESKS[i % DESKS.length].row }
-      : DESKS[i % DESKS.length],
+      ...(b.desk && Number.isInteger(b.desk.col) && Number.isInteger(b.desk.row) ? { desk: { col: b.desk.col, row: b.desk.row } } : {}),
     isChief: Boolean(b.isChief) || (i === 0 && b.isChief !== false),
     lastTask: String(b.lastTask ?? b.task ?? 'Ready'),
     status: ['idle', 'working', 'waiting'].includes(b.status) ? b.status : 'idle',

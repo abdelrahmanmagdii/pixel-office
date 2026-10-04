@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
-import type { AgentStatus } from '../data/agents';
-import { AGENTS, TASK_POOL } from '../data/agents';
+import type { AgentDef, AgentStatus, OfficeConfig } from '../data/agents';
+import { AGENTS, setOfficeConfig, TASK_POOL } from '../data/agents';
+import type { Layout, Seat } from '../data/layout';
+import { planLayout } from '../data/layout';
 import { Agent } from '../entities/Agent';
 import type { Grid } from '../systems/Pathfinding';
 import { emptyGrid } from '../systems/Pathfinding';
@@ -12,9 +14,10 @@ import {
   EMPTY_DESKS,
   MAP_COLS,
   MAP_ROWS,
+  south,
   TILE,
   WALL_WINDOWS,
-  ZONES,
+  zones,
 } from '../utils/constants';
 import { createAgentAnims, preloadAssets, TILE_FRAME } from '../utils/PixelArt';
 
@@ -56,6 +59,10 @@ export class OfficeScene extends Phaser.Scene {
   private glows: { agent: Agent; glow: Phaser.GameObjects.Ellipse }[] = [];
   private dayPhase: DayPhase = 'day';
   private clockHands!: Phaser.GameObjects.Graphics;
+  private layout!: Layout;
+  private deskImages = new Map<string, Phaser.GameObjects.Image>();
+  /** Desks from the last layout, so a rebuild doesn't reshuffle people. */
+  private keepDesks = new Map<string, Seat>();
 
   constructor() {
     super('Office');
@@ -70,6 +77,16 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.agents = [];
+    this.glows = [];
+    this.selected = null;
+    this.cosOnFloor = false;
+    this.demoMode = false;
+    this.deskImages.clear();
+    this.hooks.onSelect(null);
+    this.syncCoSButtonLabel();
+    this.layout = planLayout(AGENTS, this.keepDesks);
+    this.rememberDesks();
     createAgentAnims(this);
     this.tiles = this.buildMap();
     this.grid = this.buildWalkGrid();
@@ -88,7 +105,58 @@ export class OfficeScene extends Phaser.Scene {
       setStatus: (id: string, status: AgentStatus) => this.setStatus(id, status),
       startDemo: () => this.startDemo(),
       stopDemo: () => this.stopDemo(),
+      applyRoster: (cfg: OfficeConfig) => this.applyRoster(cfg),
+      agentIds: () => this.agents.map((a) => a.def.id),
     };
+  }
+
+  private rememberDesks(): void {
+    this.keepDesks = new Map(AGENTS.filter((a) => !a.isChief).map((a) => [a.id, { ...a.desk }]));
+  }
+
+  /** Every desk on the floor: grid slots plus explicit off-grid desks. */
+  private deskSeats(): Seat[] {
+    return [...this.layout.slots, ...this.layout.offGrid];
+  }
+
+  /**
+   * Reconcile a new roster snapshot without reloading: update agents in place,
+   * spawn newcomers at free desks, remove leavers. Rebuilds the floor only
+   * when its shape changes (more desk rows, a new Chief, off-grid desks).
+   */
+  applyRoster(cfg: OfficeConfig): void {
+    const next = cfg.agents.map((a) => ({ ...a, desk: { ...a.desk } }));
+    const layout = planLayout(next, this.keepDesks);
+    setOfficeConfig({ ...cfg, agents: next });
+    this.rememberDesks();
+    if (layout.signature !== this.layout.signature) {
+      this.scene.restart({ hooks: this.hooks });
+      return;
+    }
+    this.layout = layout;
+    const byId = new Map(next.map((d) => [d.id, d]));
+    for (const a of [...this.agents]) {
+      if (!byId.has(a.def.id)) this.removeAgent(a);
+    }
+    for (const def of next) {
+      const existing = this.agents.find((a) => a.def.id === def.id);
+      if (existing) existing.updateDef(def);
+      else this.addGlow(this.spawnAgent(def));
+    }
+    this.refreshDeskTextures();
+    if (this.selected) this.selectAgent(this.selected);
+  }
+
+  private removeAgent(agent: Agent): void {
+    if (this.selected === agent) this.selectAgent(null);
+    const i = this.glows.findIndex((g) => g.agent === agent);
+    if (i >= 0) {
+      this.glows[i].glow.destroy();
+      this.glows.splice(i, 1);
+    }
+    agent.dismissBubble();
+    agent.destroy();
+    this.agents = this.agents.filter((a) => a !== agent);
   }
 
   update(t: number, dtMs: number): void {
@@ -125,11 +193,7 @@ export class OfficeScene extends Phaser.Scene {
       }
     }
     // Agent desks 96×64 ≈ 3×2; seat/stand tile stays walkable
-    for (const a of AGENTS) {
-      if (a.isChief) continue;
-      this.blockDeskFootprint(grid, a.desk.col, a.desk.row);
-    }
-    for (const d of EMPTY_DESKS) {
+    for (const d of [...this.deskSeats(), ...EMPTY_DESKS]) {
       this.blockDeskFootprint(grid, d.col, d.row);
     }
     this.blockBossDeskFootprint(grid);
@@ -167,7 +231,7 @@ export class OfficeScene extends Phaser.Scene {
 
   /** Tile cells occupied by non-walkable props (must match placeFurniture). */
   private blockingProps(): [number, number][] {
-    return [
+    const props: [number, number][] = [
       // north wall edge props (on wood, row 1)
       [4, 1],
       [6, 1],
@@ -199,6 +263,7 @@ export class OfficeScene extends Phaser.Scene {
       [5, 15],
       [22, 8],
     ];
+    return props.map(([c, r]) => [c, south(r)]);
   }
 
   private frameFor(k: TileKind): number {
@@ -237,7 +302,7 @@ export class OfficeScene extends Phaser.Scene {
       }
     }
 
-    for (const z of ZONES) {
+    for (const z of zones()) {
       const x0 = 6.75 * TILE;
       const y0 = (z.seatRow - 0.4) * TILE;
       this.add
@@ -297,12 +362,11 @@ export class OfficeScene extends Phaser.Scene {
 
     placeDesk(BOSS_DESK.standCol, BOSS_DESK.standRow, 'desk-boss-back');
 
-    const LAPTOP_IDS = new Set(['linkedin', 'x', 'reddit', 'travel', 'deal']);
-    for (const a of AGENTS) {
-      if (a.isChief) continue;
-      placeChair(a.desk.col, a.desk.row);
-      placeDesk(a.desk.col, a.desk.row, LAPTOP_IDS.has(a.id) ? 'desk-laptop-back' : 'desk-back');
+    for (const d of this.deskSeats()) {
+      placeChair(d.col, d.row);
+      this.deskImages.set(`${d.col},${d.row}`, placeDesk(d.col, d.row, 'desk-empty'));
     }
+    this.refreshDeskTextures();
 
     for (const d of EMPTY_DESKS) {
       placeChair(d.col, d.row);
@@ -323,28 +387,41 @@ export class OfficeScene extends Phaser.Scene {
     prop(2, 4, 'plant-large');
     prop(2, 7, 'side-table');
     prop(2, 11, 'plant-tall');
-    prop(2, 15, 'plant');
+    prop(2, south(15), 'plant');
 
     // East wood edge (col 25) — hallway col 26 stays clear
     prop(25, 4, 'cooler');
     prop(25, 7, 'bench');
-    prop(25, 14, 'trash');
+    prop(25, south(14), 'trash');
 
     // Sparse aisle accents
-    prop(5, 15, 'plant');
+    prop(5, south(15), 'plant');
     prop(22, 8, 'plant-succulent');
 
     // Boss flanks
-    prop(9, 15, 'plant-tall');
-    prop(19, 15, 'plant-large');
+    prop(9, south(15), 'plant-tall');
+    prop(19, south(15), 'plant-large');
 
     // Break corner (SE)
-    prop(24, 15, 'cooler');
-    prop(23, 15, 'coffee-station');
-    prop(23, 17, 'bookshelf');
-    prop(25, 17, 'boxes');
-    prop(22, 17, 'trash');
-    this.zoneChip(24 * TILE, 14 * TILE + 14, 'BREAK').setOrigin(0.5, 1).setDepth(1020);
+    prop(24, south(15), 'cooler');
+    prop(23, south(15), 'coffee-station');
+    prop(23, south(17), 'bookshelf');
+    prop(25, south(17), 'boxes');
+    prop(22, south(17), 'trash');
+    this.zoneChip(24 * TILE, south(14) * TILE + 14, 'BREAK').setOrigin(0.5, 1).setDepth(1020);
+  }
+
+  /** Occupied desks get a screen (laptop for odd-hashed ids); free desks stay bare. */
+  private refreshDeskTextures(): void {
+    const owner = new Map(
+      AGENTS.filter((a) => !a.isChief).map((a) => [`${a.desk.col},${a.desk.row}`, a.id]),
+    );
+    for (const [k, img] of this.deskImages) {
+      const id = owner.get(k);
+      let h = 0;
+      for (const ch of id ?? '') h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+      img.setTexture(id === undefined ? 'desk-empty' : h % 2 ? 'desk-laptop-back' : 'desk-back');
+    }
   }
 
   /** Wall clock, day/night tint and per-desk screen glow. */
@@ -380,15 +457,16 @@ export class OfficeScene extends Phaser.Scene {
         .setDepth(3000);
     }
 
-    for (const a of this.agents) {
-      const seat = a.def.isChief ? { col: BOSS_DESK.standCol, row: BOSS_DESK.standRow } : a.def.desk;
-      const glow = this.add
-        .ellipse(seat.col * TILE + TILE / 2, seat.row * TILE + 4, a.def.isChief ? 72 : 40, 18, 0x7dd3fc)
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setAlpha(0)
-        .setDepth(3001);
-      this.glows.push({ agent: a, glow });
-    }
+    for (const a of this.agents) this.addGlow(a);
+  }
+
+  private addGlow(a: Agent): void {
+    const glow = this.add
+      .ellipse(0, 0, a.def.isChief ? 72 : 40, 18, 0x7dd3fc)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0)
+      .setDepth(3001);
+    this.glows.push({ agent: a, glow });
   }
 
   /** `?time=day|dusk|night` overrides the local clock (handy for screenshots). */
@@ -404,13 +482,19 @@ export class OfficeScene extends Phaser.Scene {
   private updateGlows(t: number, dt: number): void {
     const boost = this.dayPhase === 'night' ? 1.6 : 1;
     this.glows.forEach(({ agent, glow }, i) => {
+      const seat = agent.def.isChief ? { col: BOSS_DESK.standCol, row: BOSS_DESK.standRow } : agent.def.desk;
+      glow.setPosition(seat.col * TILE + TILE / 2, seat.row * TILE + 4);
       const target = agent.isTyping() ? (0.16 + 0.05 * Math.sin(t / 260 + i * 1.7)) * boost : 0;
       glow.setAlpha(glow.alpha + (target - glow.alpha) * Math.min(1, dt * 5));
     });
   }
 
   private spawnAgents(): void {
-    for (const def of AGENTS) {
+    for (const def of AGENTS) this.spawnAgent(def);
+  }
+
+  private spawnAgent(def: AgentDef): Agent {
+    {
       let start = { ...def.desk };
       let officeSeat: { col: number; row: number } | undefined;
       if (def.isChief) {
@@ -423,10 +507,11 @@ export class OfficeScene extends Phaser.Scene {
         agent.setWanderRegion(null);
       } else {
         // Main-floor wander so idle agents aren't frozen statues
-        agent.setWanderRegion({ x0: 2, y0: 2, x1: 25, y1: 16 });
+        agent.setWanderRegion({ x0: 2, y0: 2, x1: MAP_COLS - 3, y1: MAP_ROWS - 4 });
         agent.setCoffeeSpot(COFFEE_SPOT);
       }
       this.agents.push(agent);
+      return agent;
     }
   }
 
@@ -460,7 +545,20 @@ export class OfficeScene extends Phaser.Scene {
     cam.setZoom(this.fitZoom());
     cam.centerOn((MAP_COLS * TILE) / 2, (MAP_ROWS * TILE) / 2);
     // Own clamp (not setBounds) so a map smaller than the view stays centered.
-    this.events.on('postupdate', () => this.clampCamera());
+    const clamp = () => this.clampCamera();
+    // Defer one tick so the camera has picked up the new viewport size.
+    const refit = () =>
+      this.time.delayedCall(0, () => {
+        cam.setZoom(this.fitZoom());
+        cam.centerOn((MAP_COLS * TILE) / 2, (MAP_ROWS * TILE) / 2);
+      });
+    this.events.on('postupdate', clamp);
+    this.scale.on('resize', refit);
+    this.events.once('shutdown', () => {
+      this.events.off('postupdate', clamp);
+      this.scale.off('resize', refit);
+      this.input.removeAllListeners();
+    });
   }
 
   /** Start zoom: whole map on desktop; full height (desks fill the width) on narrow screens. */
@@ -659,11 +757,11 @@ export class OfficeScene extends Phaser.Scene {
     const cam = this.cameras.main;
     const fit = this.fitZoom();
     const spots = [
-      { x: 464, y: 450, zoom: 1.9 },
+      { x: 464, y: BOSS_DESK.standRow * TILE, zoom: 1.9 },
       { x: 464, y: 140, zoom: 1.6 },
       { x: 464, y: 270, zoom: 1.4 },
-      { x: 768, y: 500, zoom: 2 },
-      { x: 448, y: 320, zoom: fit },
+      { x: 768, y: COFFEE_SPOT.row * TILE, zoom: 2 },
+      { x: (MAP_COLS * TILE) / 2, y: (MAP_ROWS * TILE) / 2, zoom: fit },
     ];
     const step = (i: number): void => {
       if (!this.demoMode) return;
@@ -697,4 +795,7 @@ export type PixelOfficeApi = {
   setStatus: (id: string, status: AgentStatus) => void;
   startDemo: () => void;
   stopDemo: () => void;
+  /** Reconcile a roster snapshot live (add / update / remove agents). */
+  applyRoster: (cfg: OfficeConfig) => void;
+  agentIds: () => string[];
 };

@@ -1,3 +1,5 @@
+import { adaptRoster } from './adapters';
+
 export type AgentStatus = 'idle' | 'working' | 'waiting';
 
 export interface AgentDef {
@@ -13,12 +15,20 @@ export interface AgentDef {
   status: AgentStatus;
   /** Role-specific lines for the working state. Falls back to a per-id map, then a shared pool. */
   workingLines?: string[];
+  /** Built-in look to wear (one of BUILTIN_AGENT_IDS). Defaults to the id, then a stable pick. */
+  sprite?: string;
+  /** True when the roster gave no desk; the layout picks one. */
+  autoDesk?: boolean;
 }
 
 export interface OfficeConfig {
   officeTitle: string;
   subtitle: string;
   agents: AgentDef[];
+  /** Live feed URL to poll for roster snapshots (same JSON shape). */
+  feed?: string;
+  /** Poll interval in seconds. */
+  pollSeconds?: number;
 }
 
 const FALLBACK_AGENTS: AgentDef[] = [
@@ -157,8 +167,15 @@ function parseColor(raw: unknown, fallback = 0x94a3b8): number {
   return fallback;
 }
 
-function parseStatus(raw: unknown): AgentStatus {
-  if (raw === 'idle' || raw === 'working' || raw === 'waiting') return raw;
+const WORKING_ALIASES = ['working', 'busy', 'running', 'active', 'in_progress', 'thinking', 'executing'];
+const WAITING_ALIASES = ['waiting', 'blocked', 'pending', 'needs_input', 'awaiting_input', 'awaiting_approval', 'queued', 'paused'];
+
+/** Accepts the three canonical statuses plus common platform aliases; anything else is idle. */
+export function parseStatus(raw: unknown): AgentStatus {
+  if (typeof raw !== 'string') return 'idle';
+  const s = raw.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (WORKING_ALIASES.includes(s)) return 'working';
+  if (WAITING_ALIASES.includes(s)) return 'waiting';
   return 'idle';
 }
 
@@ -166,41 +183,48 @@ function parseAgent(raw: Record<string, unknown>, index: number): AgentDef | nul
   const id = typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim() : `agent-${index}`;
   const name = typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : id;
   const role = typeof raw.role === 'string' ? raw.role : '';
-  const deskRaw = raw.desk && typeof raw.desk === 'object' ? (raw.desk as Record<string, unknown>) : {};
-  const col = typeof deskRaw.col === 'number' ? deskRaw.col : 8;
-  const row = typeof deskRaw.row === 'number' ? deskRaw.row : 3;
+  const deskRaw = raw.desk && typeof raw.desk === 'object' ? (raw.desk as Record<string, unknown>) : null;
+  const hasDesk =
+    !!deskRaw && Number.isInteger(deskRaw.col) && Number.isInteger(deskRaw.row);
   return {
     id,
     name,
     role,
-    color: parseColor(raw.color),
-    desk: { col, row },
+    color: parseColor(raw.color, PALETTE[index % PALETTE.length]),
+    desk: hasDesk ? { col: deskRaw!.col as number, row: deskRaw!.row as number } : { col: 0, row: 0 },
+    autoDesk: !hasDesk || undefined,
     isChief: Boolean(raw.isChief),
     lastTask: typeof raw.lastTask === 'string' ? raw.lastTask : '',
     status: parseStatus(raw.status),
     workingLines: Array.isArray(raw.workingLines)
       ? raw.workingLines.filter((s): s is string => typeof s === 'string').slice(0, 12)
       : undefined,
+    sprite: typeof raw.sprite === 'string' && BUILTIN_AGENT_IDS.includes(raw.sprite) ? raw.sprite : undefined,
   };
 }
 
+const PALETTE = [
+  0x60a5fa, 0x38bdf8, 0xfb923c, 0xf87171, 0x34d399, 0xa78bfa, 0x2dd4bf, 0x4ade80, 0xf472b6, 0xfacc15, 0x22d3ee,
+];
+
 export function parseOfficeConfig(data: unknown): OfficeConfig {
   if (!data || typeof data !== 'object') return { ...DEFAULT_OFFICE, agents: [...FALLBACK_AGENTS] };
-  const obj = data as Record<string, unknown>;
-  const list = Array.isArray(obj.agents)
-    ? obj.agents
-    : Array.isArray(obj.bots)
-      ? obj.bots
-      : null;
+  const obj = (Array.isArray(data) ? {} : data) as Record<string, unknown>;
   const agents: AgentDef[] = [];
-  if (list) {
-    list.forEach((item, i) => {
-      if (item && typeof item === 'object') {
-        const a = parseAgent(item as Record<string, unknown>, i);
-        if (a) agents.push(a);
-      }
-    });
+  const seen = new Set<string>();
+  adaptRoster(data).forEach((item, i) => {
+    const a = parseAgent(item, i);
+    if (!a || seen.has(a.id)) return;
+    seen.add(a.id);
+    agents.push(a);
+  });
+  // At most one Chief
+  let chief = false;
+  for (const a of agents) {
+    if (a.isChief && chief) a.isChief = false;
+    chief ||= Boolean(a.isChief);
   }
+  const poll = Number(obj.pollSeconds);
   return {
     officeTitle:
       typeof obj.officeTitle === 'string' && obj.officeTitle.trim()
@@ -211,17 +235,35 @@ export function parseOfficeConfig(data: unknown): OfficeConfig {
         ? obj.subtitle.trim()
         : DEFAULT_OFFICE.subtitle,
     agents: agents.length ? agents : [...FALLBACK_AGENTS],
+    feed: typeof obj.feed === 'string' && /^https?:\/\//.test(obj.feed) ? obj.feed : undefined,
+    pollSeconds: Number.isFinite(poll) && poll > 0 ? poll : undefined,
   };
+}
+
+/** Fetch and parse a roster snapshot. Throws on network/HTTP errors. */
+export async function fetchOfficeConfig(url: string): Promise<{ cfg: OfficeConfig; raw: string }> {
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const raw = await res.text();
+  return { cfg: parseOfficeConfig(JSON.parse(raw)), raw };
+}
+
+/** Stable look for an agent: explicit sprite, matching built-in id, Chief art, else a hash pick. */
+export function lookFor(def: AgentDef): string {
+  if (def.sprite && BUILTIN_AGENT_IDS.includes(def.sprite)) return def.sprite;
+  if (BUILTIN_AGENT_IDS.includes(def.id)) return def.id;
+  if (def.isChief) return 'cos';
+  const pool = BUILTIN_AGENT_IDS.filter((x) => x !== 'cos');
+  let h = 0;
+  for (const ch of def.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return pool[h % pool.length];
 }
 
 /** Fetch the app-relative agents.json at boot. Falls back to DEFAULT_OFFICE on failure. */
 export async function loadOfficeConfig(): Promise<OfficeConfig> {
   const url = `${import.meta.env.BASE_URL}agents.json`;
   try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json: unknown = await res.json();
-    const cfg = parseOfficeConfig(json);
+    const { cfg } = await fetchOfficeConfig(url);
     setOfficeConfig(cfg);
     return cfg;
   } catch (err) {
