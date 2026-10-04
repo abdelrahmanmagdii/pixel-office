@@ -1,6 +1,17 @@
 export const TILE = 32;
 export const MAP_COLS = 28;
-export const MAP_ROWS = 20;
+/** Base map height; grows by ROW_PITCH per extra desk row (see setDeskRowCount). */
+export const BASE_MAP_ROWS = 20;
+export let MAP_ROWS = BASE_MAP_ROWS;
+
+/** Desk grid: seat columns, first seat row, and rows between desk rows. */
+export const DESK_COLS = [8, 12, 16, 20];
+export const FIRST_DESK_ROW = 3;
+export const ROW_PITCH = 4;
+export const BASE_DESK_ROWS = 3;
+/** Rows added below the base layout; everything south of the desks moves down by this. */
+export let SOUTH_SHIFT = 0;
+export let DESK_ROWS = BASE_DESK_ROWS;
 
 /** Walkable tile kinds */
 export type TileKind =
@@ -30,20 +41,42 @@ export const COFFEE_SPOT = { col: 23, row: 16 };
 /** North-wall columns that get a window tile. */
 export const WALL_WINDOWS = [3, 12, 16, 24];
 
-/** Desk rows (seat row) with a tinted rug and a label. */
-export const ZONES = [
-  { label: 'ENGINEERING', seatRow: 3, tint: 0x6b8fc4 },
-  { label: 'OPERATIONS', seatRow: 7, tint: 0x6fae84 },
-  { label: 'PRODUCT', seatRow: 11, tint: 0xc08aa6 },
+const ZONE_STYLES = [
+  { label: 'ENGINEERING', tint: 0x6b8fc4 },
+  { label: 'OPERATIONS', tint: 0x6fae84 },
+  { label: 'PRODUCT', tint: 0xc08aa6 },
+  { label: 'STUDIO', tint: 0xc4a86b },
+  { label: 'RESEARCH', tint: 0x6bb7c4 },
+  { label: 'GROWTH', tint: 0x9a8fc4 },
 ];
+
+/** Desk rows (seat row) with a tinted rug and a label. */
+export function zones(): { label: string; seatRow: number; tint: number }[] {
+  return Array.from({ length: DESK_ROWS }, (_, i) => ({
+    ...ZONE_STYLES[i % ZONE_STYLES.length],
+    seatRow: FIRST_DESK_ROW + i * ROW_PITCH,
+  }));
+}
+
+/** Resize the floor for `rows` desk rows (min 3); moves the boss desk and break corner south. */
+export function setDeskRowCount(rows: number): void {
+  DESK_ROWS = Math.max(BASE_DESK_ROWS, rows);
+  SOUTH_SHIFT = (DESK_ROWS - BASE_DESK_ROWS) * ROW_PITCH;
+  MAP_ROWS = BASE_MAP_ROWS + SOUTH_SHIFT;
+  BOSS_DESK.standRow = 14 + SOUTH_SHIFT;
+  COFFEE_SPOT.row = 16 + SOUTH_SHIFT;
+}
+
+/** Rows at or below 14 belong to the south block (boss desk, break corner). */
+export function south(row: number): number {
+  return row >= 14 ? row + SOUTH_SHIFT : row;
+}
 
 /**
  * Unoccupied filler desks (v5) — existing desk/desk-laptop sprites, no agents.
  * Seat tiles; 96×64 footprint blocks north of seat. Keep clear of Chief front.
  */
 export const EMPTY_DESKS: { col: number; row: number; key: 'desk' | 'desk-laptop' | 'desk-empty' }[] = [
-  { col: 16, row: 11, key: 'desk-empty' },   // bare wood — reads clearly empty
-  { col: 20, row: 11, key: 'desk' },         // unoccupied monitor desk
   { col: 4, row: 5, key: 'desk-empty' },     // bare wood west
   { col: 24, row: 9, key: 'desk-laptop' },   // unoccupied laptop east
 ];

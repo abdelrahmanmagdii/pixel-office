@@ -46,34 +46,35 @@ if (!list || !list.length) {
   process.exit(1);
 }
 
-const DEFAULT_DESKS = [
-  { col: 14, row: 17 },
-  { col: 8, row: 6 },
-  { col: 12, row: 6 },
-  { col: 16, row: 6 },
-  { col: 20, row: 6 },
-  { col: 8, row: 10 },
-  { col: 12, row: 10 },
-  { col: 16, row: 10 },
-  { col: 20, row: 10 },
-  { col: 8, row: 14 },
-  { col: 12, row: 14 },
-];
+// Desks are optional: the office auto-assigns free desks and grows the floor for big teams.
+const STATUS = {
+  working: ['working', 'busy', 'running', 'active', 'in_progress', 'thinking', 'executing'],
+  waiting: ['waiting', 'blocked', 'pending', 'needs_input', 'awaiting_input', 'awaiting_approval', 'queued', 'paused'],
+};
+const status = (s) => {
+  const v = String(s ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  return STATUS.working.includes(v) ? 'working' : STATUS.waiting.includes(v) ? 'waiting' : 'idle';
+};
+const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32) || 'agent';
 
 const agents = list.map((b, i) => {
-  const id = String(b.id ?? b.slug ?? `agent-${i}`).trim();
-  const desk = b.desk && typeof b.desk === 'object'
-    ? { col: Number(b.desk.col) || DEFAULT_DESKS[i % DEFAULT_DESKS.length].col, row: Number(b.desk.row) || DEFAULT_DESKS[i % DEFAULT_DESKS.length].row }
-    : DEFAULT_DESKS[i % DEFAULT_DESKS.length];
+  const name = String(b.name ?? b.displayName ?? b.title ?? b.id ?? `Agent ${i + 1}`);
+  const id = String(b.id ?? b.slug ?? slug(name)).trim();
+  const desk = b.desk && Number.isInteger(b.desk.col) && Number.isInteger(b.desk.row)
+    ? { col: b.desk.col, row: b.desk.row }
+    : undefined;
   return {
     id,
-    name: String(b.name ?? id),
-    role: String(b.role ?? ''),
-    color: typeof b.color === 'string' ? b.color : `#${Number(b.color ?? 0x94a3b8).toString(16).padStart(6, '0')}`,
-    desk,
-    ...(b.isChief ? { isChief: true } : i === 0 && b.isChief !== false ? {} : {}),
-    lastTask: String(b.lastTask ?? b.task ?? 'Ready'),
-    status: ['idle', 'working', 'waiting'].includes(b.status) ? b.status : 'idle',
+    name,
+    role: String(b.role ?? b.description ?? ''),
+    ...(b.color !== undefined
+      ? { color: typeof b.color === 'string' ? b.color : `#${Number(b.color).toString(16).padStart(6, '0')}` }
+      : {}),
+    ...(desk ? { desk } : {}),
+    ...(b.isChief ? { isChief: true } : {}),
+    ...(typeof b.sprite === 'string' ? { sprite: b.sprite } : {}),
+    lastTask: String(b.lastTask ?? b.task ?? b.summary ?? 'Ready'),
+    status: status(b.status ?? b.state),
     ...(Array.isArray(b.workingLines) && b.workingLines.length
       ? { workingLines: b.workingLines.filter((x) => typeof x === 'string') }
       : {}),
@@ -88,6 +89,8 @@ if (!agents.some((a) => a.isChief)) {
 const out = {
   officeTitle: String(raw.officeTitle ?? 'Pixel Office'),
   subtitle: String(raw.subtitle ?? 'Your agent floor — click an agent for details'),
+  ...(typeof raw.feed === 'string' ? { feed: raw.feed } : {}),
+  ...(Number.isFinite(raw.pollSeconds) ? { pollSeconds: raw.pollSeconds } : {}),
   agents,
 };
 

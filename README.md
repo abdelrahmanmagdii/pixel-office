@@ -22,12 +22,21 @@ Pick one path.
 
 ## 3. Customize the roster (advanced)
 
-The roster is `public/agents.json`. The full field definitions and standard desk positions are in `SCHEMA.md`.
+The roster is `public/agents.json`. The full field definitions and layout rules are in `SCHEMA.md`.
 
-- `id` values that ship with art: `cos`, `github`, `linkedin`, `x`, `reddit`, `gmail`, `travel`, `deal`, `flight`, `optimizer`, `swe`. Unknown ids render with a fallback sprite.
+- `id` values that ship with art: `cos`, `github`, `linkedin`, `x`, `reddit`, `gmail`, `travel`, `deal`, `flight`, `optimizer`, `swe`. Other ids get a built-in look automatically.
 - To map a bot list into the roster: `cp bots.example.json bots.json`, edit it, then `npm run map-bots`.
 
-## 4. Run locally
+## 4. Live updates
+
+The office polls for roster changes and updates without a reload: statuses and tasks change in place, new agents take a free desk, and agents that leave walk off the floor.
+
+- **No setup:** it re-reads `agents.json` every 60 seconds, so a commit shows up after Pages redeploys.
+- **Live feed:** deploy the free Cloudflare Worker in `feed/` (see `feed/README.md`) and add `"feed": "<url>"` to `agents.json`, or append `?feed=<url>` to the page URL. Bots `PATCH /agents/<id>` with a token; the office polls every 15 seconds (`pollSeconds` or `?poll=` to change). The header shows **LIVE** or **OFFLINE**.
+- **Big teams:** desks are assigned automatically and the floor grows by a row of four desks as needed.
+- **Other platforms:** `src/data/adapters.ts` maps other agent exports to the roster schema. Add an adapter there to support a new platform.
+
+## 5. Run locally
 
 ```bash
 git clone https://github.com/abdelrahmanmagdii/pixel-office.git
@@ -36,6 +45,8 @@ npm install
 npm run dev
 ```
 
+Tests: `npm test` (feed Worker). Local feed: `npm run feed:dev`.
+
 Build and preview:
 
 ```bash
@@ -43,7 +54,7 @@ npm run build
 npm run preview
 ```
 
-## 5. Stack
+## 6. Stack
 
 - Vite + TypeScript
 - Phaser 4 (pixelArt mode)

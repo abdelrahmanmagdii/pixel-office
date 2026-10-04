@@ -1,0 +1,12 @@
+name = "pixel-office-feed"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+# Create with: npx wrangler kv namespace create ROSTER  → paste the id below
+[[kv_namespaces]]
+binding = "ROSTER"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+# Lock reads to your Pages origin, or leave "*" for any site.
+ALLOWED_ORIGIN = "*"

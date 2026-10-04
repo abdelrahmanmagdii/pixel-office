@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { AgentDef, AgentStatus } from '../data/agents';
 import {
+  lookFor,
   IDLE_LINES,
   IDLE_LINES_BY_ID,
   WAITING_LINES,
@@ -8,7 +9,7 @@ import {
   WORKING_LINES,
   WORKING_LINES_BY_ID,
 } from '../data/agents';
-import { TILE } from '../utils/constants';
+import { MAP_COLS, MAP_ROWS, TILE } from '../utils/constants';
 import type { Grid } from '../systems/Pathfinding';
 import { findPath, randomWalkableTile } from '../systems/Pathfinding';
 
@@ -21,7 +22,7 @@ const TYPING_FRAMES = ['   ', '.  ', '.. ', '...'];
 const LABEL_Y = { standing: 10, atDesk: 56 };
 
 export class Agent extends Phaser.GameObjects.Container {
-  readonly def: AgentDef;
+  def: AgentDef;
   status: AgentStatus;
   lastTask: string;
   location: AgentLocation = 'floor';
@@ -69,7 +70,7 @@ export class Agent extends Phaser.GameObjects.Container {
     }
 
     // 48×48 chibi on 32px tile grid — feet anchored near tile center
-    this.sprite = scene.add.sprite(0, 0, `agent-${def.id}`, 0);
+    this.sprite = scene.add.sprite(0, 0, `look-${lookFor(def)}`, 0);
     this.sprite.setOrigin(0.5, 0.88);
     this.sprite.setDisplaySize(48, 48);
 
@@ -123,6 +124,20 @@ export class Agent extends Phaser.GameObjects.Container {
     this.setDepth(1000 + startRow);
 
     this.applyStatus(this.status, true);
+  }
+
+  /** Apply a newer roster entry for this id in place (live feed). */
+  updateDef(next: AgentDef): void {
+    const prev = this.def;
+    this.def = next;
+    if (prev.name !== next.name) this.label.setText(next.name.split(' ')[0]);
+    if (lookFor(prev) !== lookFor(next)) this.sprite.setTexture(this.sheetKey(), 0);
+    this.lastTask = next.lastTask;
+    const deskMoved = prev.desk.col !== next.desk.col || prev.desk.row !== next.desk.row;
+    if (deskMoved) this.deskSeat = { ...next.desk };
+    if (next.status !== this.status || (deskMoved && this.status === 'working')) {
+      this.applyStatus(next.status);
+    }
   }
 
   setSelected(on: boolean): void {
@@ -247,7 +262,7 @@ export class Agent extends Phaser.GameObjects.Container {
       }
     } else {
       // Floor patrol across main wood floor
-      this.setWanderRegion({ x0: 2, y0: 2, x1: 25, y1: 15 });
+      this.setWanderRegion({ x0: 2, y0: 2, x1: MAP_COLS - 3, y1: MAP_ROWS - 5 });
       this.showIdleFrame();
       this.idleTimer = 0.2;
       const t = this.getTile();
@@ -277,8 +292,8 @@ export class Agent extends Phaser.GameObjects.Container {
         const near = randomWalkableTile(this.grid, undefined, {
           x0: Math.max(0, t.col - 2),
           y0: Math.max(0, t.row - 2),
-          x1: Math.min(27, t.col + 2),
-          y1: Math.min(19, t.row + 2),
+          x1: Math.min(MAP_COLS - 1, t.col + 2),
+          y1: Math.min(MAP_ROWS - 1, t.row + 2),
         });
         if (near) this.walkTo(near.col, near.row);
         this.showBubble(Phaser.Utils.Array.GetRandom(this.waitingLines()));
@@ -340,7 +355,7 @@ export class Agent extends Phaser.GameObjects.Container {
   }
 
   private sheetKey(): string {
-    return `agent-${this.def.id}`;
+    return `look-${lookFor(this.def)}`;
   }
 
   /** Working bubble lines: per-agent override, then id map, then shared pool. */

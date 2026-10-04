@@ -26,6 +26,7 @@ html, body, #app {
 #app {
   display: grid;
   grid-template-rows: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 #topbar {
@@ -99,11 +100,13 @@ html, body, #app {
 #stage-wrap {
   position: relative;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 #game-container {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
 }
 
 #game-container canvas {
@@ -290,3 +293,18 @@ html, body, #app {
   .hint-desktop { display: none; }
   .hint-touch { display: inline; }
 }
+
+.live-pill {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  vertical-align: middle;
+  border: 1px solid currentColor;
+}
+.live-pill.hidden { display: none; }
+.live-pill.live { color: #34d399; }
+.live-pill.live::before { content: '● '; }
+.live-pill.offline { color: #fbbf24; }
