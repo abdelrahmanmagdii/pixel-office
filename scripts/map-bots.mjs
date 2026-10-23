@@ -10,6 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assignRosterSeats } from '../src/data/seats.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -46,7 +47,6 @@ if (!list || !list.length) {
   process.exit(1);
 }
 
-// Desks are optional: the office auto-assigns free desks and grows the floor for big teams.
 const STATUS = {
   working: ['working', 'busy', 'running', 'active', 'in_progress', 'thinking', 'executing'],
   waiting: ['waiting', 'blocked', 'pending', 'needs_input', 'awaiting_input', 'awaiting_approval', 'queued', 'paused'],
@@ -57,7 +57,7 @@ const status = (s) => {
 };
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32) || 'agent';
 
-const agents = list.map((b, i) => {
+const drafted = list.map((b, i) => {
   const name = String(b.name ?? b.displayName ?? b.title ?? b.id ?? `Agent ${i + 1}`);
   const id = String(b.id ?? b.slug ?? slug(name)).trim();
   const desk = b.desk && Number.isInteger(b.desk.col) && Number.isInteger(b.desk.row)
@@ -71,7 +71,7 @@ const agents = list.map((b, i) => {
       ? { color: typeof b.color === 'string' ? b.color : `#${Number(b.color).toString(16).padStart(6, '0')}` }
       : {}),
     ...(desk ? { desk } : {}),
-    ...(b.isChief ? { isChief: true } : {}),
+    ...(b.isChief === true || b.isChief === false ? { isChief: b.isChief } : {}),
     ...(typeof b.sprite === 'string' ? { sprite: b.sprite } : {}),
     lastTask: String(b.lastTask ?? b.task ?? b.summary ?? 'Ready'),
     status: status(b.status ?? b.state),
@@ -81,16 +81,23 @@ const agents = list.map((b, i) => {
   };
 });
 
-// First entry with isChief, or mark first as chief if none set
-if (!agents.some((a) => a.isChief)) {
-  agents[0].isChief = true;
-}
+// First bot becomes Chief unless isChief is explicitly false or another bot is chief.
+const seats = assignRosterSeats(drafted);
+const agents = drafted.map((b, i) => {
+  const { isChief: _isChief, desk: _desk, ...rest } = b;
+  return {
+    ...rest,
+    desk: seats[i].desk,
+    ...(seats[i].isChief ? { isChief: true } : {}),
+  };
+});
 
 const out = {
   officeTitle: String(raw.officeTitle ?? 'Pixel Office'),
   subtitle: String(raw.subtitle ?? 'Your agent floor — click an agent for details'),
   ...(typeof raw.feed === 'string' ? { feed: raw.feed } : {}),
   ...(Number.isFinite(raw.pollSeconds) ? { pollSeconds: raw.pollSeconds } : {}),
+  ...(typeof raw.poster === 'string' ? { poster: raw.poster } : {}),
   agents,
 };
 

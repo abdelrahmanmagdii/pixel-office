@@ -236,6 +236,14 @@ html, body, #app {
   font-size: 0.75rem;
   resize: vertical;
 }
+#customize-modal .form-error {
+  margin-top: 0.6rem;
+  color: #fca5a5;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+#customize-modal .form-error.hidden { display: none; }
 #customize-modal .modal-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
 #customize-modal button {
   appearance: none;

@@ -34,11 +34,13 @@ test('PUT replaces and sanitizes; PATCH merges/adds; DELETE removes', async () =
   const e = env();
   const put = await call(e, 'PUT', '/', {
     officeTitle: 'Grok Team',
+    poster: '★ STARBASE 2026',
     agents: [{ id: 'a', name: 'A', status: 'working', evil: '<x>' }, { id: 'a' }, { name: 'no id' }],
   });
   assert.equal(put.status, 200);
   let r = await (await call(e, 'GET', '/', undefined, null)).json();
   assert.equal(r.officeTitle, 'Grok Team');
+  assert.equal(r.poster, '★ STARBASE 2026');
   assert.deepEqual(r.agents, [{ id: 'a', name: 'A', status: 'working' }]);
   assert.ok(r.updatedAt);
 

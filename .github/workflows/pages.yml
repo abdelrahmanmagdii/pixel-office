@@ -1,5 +1,7 @@
 name: Deploy GitHub Pages
 
+# A push made with the default GITHUB_TOKEN does not start this workflow.
+# "Personalize my office" builds and deploys Pages in its own run for that reason.
 on:
   push:
     branches: [main]

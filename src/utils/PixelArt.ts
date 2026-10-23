@@ -25,9 +25,6 @@ export function preloadAssets(scene: Phaser.Scene): void {
   });
   // Legacy + new furniture keys (FURNITURE_SPEC.md)
   for (const key of [
-    'desk',
-    'desk-laptop',
-    'desk-boss',
     'desk-empty',
     'desk-back',
     'desk-laptop-back',
@@ -53,7 +50,6 @@ export function preloadAssets(scene: Phaser.Scene): void {
     'bubble-9slice-idle',
     'bubble-9slice-waiting',
     'bubble-9slice-working',
-    'bubble-frame',
     'bubble-tail',
     'bubble-tail-idle',
     'bubble-tail-waiting',

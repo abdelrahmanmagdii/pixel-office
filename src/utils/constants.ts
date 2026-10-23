@@ -1,14 +1,24 @@
+import {
+  BASE_DESK_ROWS as SEAT_BASE_DESK_ROWS,
+  BASE_MAP_ROWS as SEAT_BASE_MAP_ROWS,
+  BOSS_SEAT,
+  DESK_COLS as SEAT_DESK_COLS,
+  fillerDesks,
+  FIRST_DESK_ROW as SEAT_FIRST_DESK_ROW,
+  ROW_PITCH as SEAT_ROW_PITCH,
+} from '../data/seats.js';
+
 export const TILE = 32;
 export const MAP_COLS = 28;
 /** Base map height; grows by ROW_PITCH per extra desk row (see setDeskRowCount). */
-export const BASE_MAP_ROWS = 20;
+export const BASE_MAP_ROWS = SEAT_BASE_MAP_ROWS;
 export let MAP_ROWS = BASE_MAP_ROWS;
 
-/** Desk grid: seat columns, first seat row, and rows between desk rows. */
-export const DESK_COLS = [8, 12, 16, 20];
-export const FIRST_DESK_ROW = 3;
-export const ROW_PITCH = 4;
-export const BASE_DESK_ROWS = 3;
+/** Desk grid. Values come from src/data/seats.js so scripts cannot drift. */
+export const DESK_COLS = SEAT_DESK_COLS;
+export const FIRST_DESK_ROW = SEAT_FIRST_DESK_ROW;
+export const ROW_PITCH = SEAT_ROW_PITCH;
+export const BASE_DESK_ROWS = SEAT_BASE_DESK_ROWS;
 /** Rows added below the base layout; everything south of the desks moves down by this. */
 export let SOUTH_SHIFT = 0;
 export let DESK_ROWS = BASE_DESK_ROWS;
@@ -31,12 +41,15 @@ export type TileKind =
  * The desk is drawn on the two rows south of the stand tile.
  */
 export const BOSS_DESK = {
-  standCol: 14,
-  standRow: 14,
+  standCol: BOSS_SEAT.col,
+  standRow: BOSS_SEAT.row,
 };
 
+/** Coffee stand is two tiles south of the boss on the base floor. */
+const COFFEE_ROW_OFFSET = 2;
+
 /** Tile idle agents walk to for a coffee break (south of the coffee station). */
-export const COFFEE_SPOT = { col: 23, row: 16 };
+export const COFFEE_SPOT = { col: 23, row: BOSS_SEAT.row + COFFEE_ROW_OFFSET };
 
 /** North-wall columns that get a window tile. */
 export const WALL_WINDOWS = [3, 12, 16, 24];
@@ -63,23 +76,21 @@ export function setDeskRowCount(rows: number): void {
   DESK_ROWS = Math.max(BASE_DESK_ROWS, rows);
   SOUTH_SHIFT = (DESK_ROWS - BASE_DESK_ROWS) * ROW_PITCH;
   MAP_ROWS = BASE_MAP_ROWS + SOUTH_SHIFT;
-  BOSS_DESK.standRow = 14 + SOUTH_SHIFT;
-  COFFEE_SPOT.row = 16 + SOUTH_SHIFT;
+  BOSS_DESK.standRow = BOSS_SEAT.row + SOUTH_SHIFT;
+  COFFEE_SPOT.row = BOSS_SEAT.row + COFFEE_ROW_OFFSET + SOUTH_SHIFT;
 }
 
-/** Rows at or below 14 belong to the south block (boss desk, break corner). */
+/** Rows at or below the base boss row belong to the south block (boss desk, break corner). */
 export function south(row: number): number {
-  return row >= 14 ? row + SOUTH_SHIFT : row;
+  return row >= BOSS_SEAT.row ? row + SOUTH_SHIFT : row;
 }
 
 /**
  * Unoccupied filler desks (v5) — existing desk/desk-laptop sprites, no agents.
  * Seat tiles; 96×64 footprint blocks north of seat. Keep clear of Chief front.
  */
-export const EMPTY_DESKS: { col: number; row: number; key: 'desk' | 'desk-laptop' | 'desk-empty' }[] = [
-  { col: 4, row: 5, key: 'desk-empty' },     // bare wood west
-  { col: 24, row: 9, key: 'desk-laptop' },   // unoccupied laptop east
-];
+/** Filler desks from seats.js. Keys are the texture names the scene draws. */
+export const EMPTY_DESKS = fillerDesks();
 
 export const CAMERA = {
   /** Upper bound for the start zoom; the start zoom fits the map to the viewport. */
@@ -87,7 +98,4 @@ export const CAMERA = {
   minZoom: 0.4,
   maxZoom: 3.2,
   panSpeed: 280,
-  /** Main-floor focus (tile coords) — open office desks, not map center. */
-  startCol: 15,
-  startRow: 9,
 };

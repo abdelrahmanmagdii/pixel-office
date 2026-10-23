@@ -1,6 +1,6 @@
 # Pixel Office roster schema
 
-One schema for the roster. `public/agents.json`, the live feed (`feed/worker.js`), `bots.example.json`, `scripts/map-bots.mjs`, and `scripts/personalize.mjs` all follow this file.
+One schema for the roster. `public/agents.json`, the live feed (`feed/worker.js`), `bots.example.json`, `scripts/map-bots.mjs`, and `scripts/personalize.mjs` all follow this file. Desk seats come from `src/data/seats.js`, which the app and those scripts share.
 
 ```json
 {
@@ -8,6 +8,7 @@ One schema for the roster. `public/agents.json`, the live feed (`feed/worker.js`
   "subtitle": "Your agent floor — click an agent for details",
   "feed": "https://pixel-office-feed.<you>.workers.dev",
   "pollSeconds": 15,
+  "poster": "PIXEL OFFICE",
   "agents": [
     {
       "id": "github",
@@ -32,6 +33,7 @@ One schema for the roster. `public/agents.json`, the live feed (`feed/worker.js`
 | `subtitle` | string | no | Header subtitle. |
 | `feed` | string | no | Live feed URL. The office polls it and updates without a reload. `?feed=<url>` in the page URL overrides it. |
 | `pollSeconds` | number | no | Poll interval. Default 15 with a feed, 60 without (then `agents.json` itself is polled). Minimum 5. `?poll=<s>` overrides it. |
+| `poster` | string | no | Text on the north-wall poster. Defaults to `PIXEL OFFICE`. |
 | `agents` | array | yes | One object per agent. `bots` or a bare array also work. |
 | `agents[].id` | string | yes | Unique slug. Falls back to a slug of `name`. |
 | `agents[].name` | string | yes | Short display name. |
@@ -51,6 +53,8 @@ Built-in looks: `cos`, `github`, `linkedin`, `x`, `reddit`, `gmail`, `travel`, `
 An agent wears `sprite` if set, else the look matching its `id`, else `cos` for the Chief, else a stable pick from the other looks based on its `id`.
 
 ## Layout
+
+Seat numbers live in `src/data/seats.js`. `scripts/personalize.mjs` and `scripts/map-bots.mjs` write those seats into the roster, so a generated file lines up with the rugs. The first bot becomes the Chief unless `isChief` is `false` or another bot is explicitly chief. The Chief's seat is `{ col: 14, row: 14 }`. Staff fill columns 8, 12, 16, 20 at rows 3, 7, 11, and further rows when the team is larger. A staff seat that would overlap the boss desk is not used.
 
 - Desks sit on a grid: columns 8, 12, 16, 20 and seat rows 3, 7, 11, … (4 per row). The desk is drawn south of the seat, so the agent faces the camera.
 - Agents without a `desk` take the first free grid desk. On live updates, agents keep the desk they already had.

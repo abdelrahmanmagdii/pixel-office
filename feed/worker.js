@@ -51,7 +51,7 @@ export function cleanRoster(r) {
   }
   const out = { agents };
   if (!Array.isArray(r)) {
-    for (const k of ['officeTitle', 'subtitle']) if (typeof r[k] === 'string') out[k] = r[k].slice(0, 80);
+    for (const k of ['officeTitle', 'subtitle', 'poster']) if (typeof r[k] === 'string') out[k] = r[k].slice(0, 80);
     if (Number.isFinite(r.pollSeconds) && r.pollSeconds >= 5) out.pollSeconds = r.pollSeconds;
   }
   return out;

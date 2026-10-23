@@ -7,6 +7,7 @@
       "name": "Chief",
       "role": "Coordinates the floor and priorities",
       "color": "#f59e0b",
+      "desk": { "col": 14, "row": 14 },
       "isChief": true,
       "lastTask": "Synced weekly team priorities",
       "status": "working"
@@ -16,6 +17,7 @@
       "name": "Engineer",
       "role": "Builds features and keeps CI healthy",
       "color": "#60a5fa",
+      "desk": { "col": 8, "row": 3 },
       "lastTask": "Triaged open pull requests",
       "status": "idle",
       "workingLines": [
@@ -28,6 +30,7 @@
       "name": "Designer",
       "role": "UI polish, layouts, and visual craft",
       "color": "#38bdf8",
+      "desk": { "col": 12, "row": 3 },
       "lastTask": "Refined desk-label hierarchy",
       "status": "working"
     }

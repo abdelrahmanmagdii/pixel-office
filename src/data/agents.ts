@@ -29,6 +29,8 @@ export interface OfficeConfig {
   feed?: string;
   /** Poll interval in seconds. */
   pollSeconds?: number;
+  /** North-wall poster. Defaults to PIXEL OFFICE when omitted. */
+  poster?: string;
 }
 
 const FALLBACK_AGENTS: AgentDef[] = [
@@ -143,13 +145,18 @@ export const DEFAULT_OFFICE: OfficeConfig = {
 /** Mutable roster — replaced by loadOfficeConfig() before Phaser boots. */
 export let AGENTS: AgentDef[] = [...FALLBACK_AGENTS];
 
+/** Neutral wall poster when agents.json does not set one. */
+export const DEFAULT_POSTER = 'PIXEL OFFICE';
+
 /** Mutable office chrome strings. */
 export let officeTitle = DEFAULT_OFFICE.officeTitle;
 export let officeSubtitle = DEFAULT_OFFICE.subtitle;
+export let officePoster = DEFAULT_POSTER;
 
 export function setOfficeConfig(cfg: OfficeConfig): void {
   officeTitle = cfg.officeTitle || DEFAULT_OFFICE.officeTitle;
   officeSubtitle = cfg.subtitle || DEFAULT_OFFICE.subtitle;
+  officePoster = cfg.poster?.trim() || DEFAULT_POSTER;
   AGENTS = cfg.agents.length ? cfg.agents : [...FALLBACK_AGENTS];
 }
 
@@ -167,8 +174,8 @@ function parseColor(raw: unknown, fallback = 0x94a3b8): number {
   return fallback;
 }
 
-const WORKING_ALIASES = ['working', 'busy', 'running', 'active', 'in_progress', 'thinking', 'executing'];
-const WAITING_ALIASES = ['waiting', 'blocked', 'pending', 'needs_input', 'awaiting_input', 'awaiting_approval', 'queued', 'paused'];
+export const WORKING_ALIASES = ['working', 'busy', 'running', 'active', 'in_progress', 'thinking', 'executing'];
+export const WAITING_ALIASES = ['waiting', 'blocked', 'pending', 'needs_input', 'awaiting_input', 'awaiting_approval', 'queued', 'paused'];
 
 /** Accepts the three canonical statuses plus common platform aliases; anything else is idle. */
 export function parseStatus(raw: unknown): AgentStatus {
@@ -237,6 +244,7 @@ export function parseOfficeConfig(data: unknown): OfficeConfig {
     agents: agents.length ? agents : [...FALLBACK_AGENTS],
     feed: typeof obj.feed === 'string' && /^https?:\/\//.test(obj.feed) ? obj.feed : undefined,
     pollSeconds: Number.isFinite(poll) && poll > 0 ? poll : undefined,
+    poster: typeof obj.poster === 'string' && obj.poster.trim() ? obj.poster.trim() : undefined,
   };
 }
 
