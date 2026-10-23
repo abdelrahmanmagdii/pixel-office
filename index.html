@@ -9,12 +9,12 @@
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Pixel Office — your Grok agent team, visualized" />
     <meta property="og:description" content="A living pixel-art office for the Grok Bot agents on your floor. Click, hover, and watch them work." />
-    <meta property="og:image" content="https://abdelrahmanmagdii.github.io/pixel-office/og-image.png" />
-    <meta property="og:url" content="https://abdelrahmanmagdii.github.io/pixel-office/" />
+    <meta property="og:image" content="og-image.png" />
+    <meta property="og:url" content="./" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Pixel Office — your Grok agent team, visualized" />
     <meta name="twitter:description" content="A living pixel-art office for the Grok Bot agents on your floor." />
-    <meta name="twitter:image" content="https://abdelrahmanmagdii.github.io/pixel-office/og-image.png" />
+    <meta name="twitter:image" content="og-image.png" />
   </head>
   <body>
     <div id="app">
@@ -63,6 +63,7 @@
           <h2>Make it your team</h2>
           <p class="muted">Edit the roster, then download the file and drop it into your repo's <code>public/</code> folder.</p>
           <textarea id="customize-json" spellcheck="false" aria-label="Roster JSON"></textarea>
+          <p id="customize-error" class="form-error hidden" role="alert"></p>
           <div class="modal-actions">
             <button id="customize-download" type="button">Download agents.json</button>
             <button id="customize-copy" type="button">Copy</button>

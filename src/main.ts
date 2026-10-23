@@ -8,6 +8,7 @@ import {
   setOfficeConfig,
 } from './data/agents';
 import type { OfficeConfig } from './data/agents';
+import { validateRosterText } from './data/validateRoster';
 import { OfficeScene } from './scenes/OfficeScene';
 import type { PanelPayload, PixelOfficeApi } from './scenes/OfficeScene';
 import type { AgentStatus } from './data/agents';
@@ -204,14 +205,37 @@ async function boot(): Promise<void> {
   // Customize: edit + download the roster without leaving the page
   const modal = document.getElementById('customize-modal')!;
   const ta = document.getElementById('customize-json') as HTMLTextAreaElement;
+  const customizeError = document.getElementById('customize-error')!;
+  const setCustomizeError = (message: string | null): void => {
+    if (!message) {
+      customizeError.textContent = '';
+      customizeError.classList.add('hidden');
+      return;
+    }
+    customizeError.textContent = message;
+    customizeError.classList.remove('hidden');
+  };
+  const rosterTextIfValid = (): string | null => {
+    const result = validateRosterText(ta.value);
+    if (!result.ok) {
+      setCustomizeError(result.error);
+      return null;
+    }
+    setCustomizeError(null);
+    return ta.value.endsWith('\n') ? ta.value : `${ta.value}\n`;
+  };
   btnCustomize.addEventListener('click', async () => {
     const res = await fetch(feed.url, { cache: 'no-store' });
     ta.value = JSON.stringify(await res.json(), null, 2);
+    setCustomizeError(null);
     modal.classList.remove('hidden');
   });
+  ta.addEventListener('input', () => setCustomizeError(null));
   document.getElementById('customize-close')!.addEventListener('click', () => modal.classList.add('hidden'));
   document.getElementById('customize-download')!.addEventListener('click', () => {
-    const blob = new Blob([ta.value + '\n'], { type: 'application/json' });
+    const text = rosterTextIfValid();
+    if (text === null) return;
+    const blob = new Blob([text], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'agents.json';
@@ -219,7 +243,9 @@ async function boot(): Promise<void> {
     URL.revokeObjectURL(a.href);
   });
   document.getElementById('customize-copy')!.addEventListener('click', async () => {
-    await navigator.clipboard.writeText(ta.value);
+    const text = rosterTextIfValid();
+    if (text === null) return;
+    await navigator.clipboard.writeText(text);
   });
 }
 

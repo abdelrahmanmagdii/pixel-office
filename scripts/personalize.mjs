@@ -13,6 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assignRosterSeats } from '../src/data/seats.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -33,19 +34,31 @@ function slugify(name) {
     .slice(0, 24) || 'agent';
 }
 
+/** Apply the shared seat layout. The first bot becomes Chief unless isChief is false. */
+function withSeats(list) {
+  const seats = assignRosterSeats(list);
+  return list.map((b, i) => {
+    const { isChief: _isChief, desk: _desk, ...rest } = b;
+    return {
+      ...rest,
+      desk: seats[i].desk,
+      ...(seats[i].isChief ? { isChief: true } : {}),
+    };
+  });
+}
+
 function fromNames(names) {
-  return names.map((raw, i) => {
+  return withSeats(names.map((raw, i) => {
     const name = String(raw).trim();
     return {
       id: slugify(name),
       name,
       role: '',
       color: PALETTE[i % PALETTE.length],
-      isChief: i === 0,
       lastTask: 'Ready',
       status: 'idle',
     };
-  });
+  }));
 }
 
 function fromJson(data) {
@@ -59,31 +72,37 @@ function fromJson(data) {
   if (!list || !list.length) {
     throw new Error('JSON must contain a non-empty "agents" or "bots" array, or be an array.');
   }
-  return list.map((b, i) => ({
+  return withSeats(list.map((b, i) => ({
     id: String(b.id ?? b.slug ?? `agent-${i}`).trim(),
     name: String(b.name ?? b.id ?? `agent-${i}`),
     role: String(b.role ?? ''),
     color: typeof b.color === 'string'
       ? b.color
       : `#${Number(b.color ?? 0x94a3b8).toString(16).padStart(6, '0')}`,
-      ...(b.desk && Number.isInteger(b.desk.col) && Number.isInteger(b.desk.row) ? { desk: { col: b.desk.col, row: b.desk.row } } : {}),
-    isChief: Boolean(b.isChief) || (i === 0 && b.isChief !== false),
+    ...(b.desk && Number.isInteger(b.desk.col) && Number.isInteger(b.desk.row)
+      ? { desk: { col: b.desk.col, row: b.desk.row } }
+      : {}),
+    ...(b.isChief === true || b.isChief === false ? { isChief: b.isChief } : {}),
     lastTask: String(b.lastTask ?? b.task ?? 'Ready'),
     status: ['idle', 'working', 'waiting'].includes(b.status) ? b.status : 'idle',
     ...(Array.isArray(b.workingLines) && b.workingLines.length
       ? { workingLines: b.workingLines.filter((x) => typeof x === 'string') }
       : {}),
-  }));
+  })));
 }
 
-function writeOut(officeTitle, agents) {
+function writeOut(officeTitle, agents, extra = {}) {
   if (!agents.length) {
     console.error('No agents produced. Pass at least one name or a JSON list.');
     process.exit(1);
   }
+  const subtitle = typeof extra.subtitle === 'string' && extra.subtitle.trim()
+    ? extra.subtitle.trim()
+    : 'Your agent floor — click an agent for details';
   const out = {
     officeTitle,
-    subtitle: 'Your agent floor — click an agent for details',
+    subtitle,
+    ...(typeof extra.poster === 'string' && extra.poster.trim() ? { poster: extra.poster.trim() } : {}),
     agents,
   };
   const outPath = path.join(root, 'public', 'agents.json');
@@ -116,7 +135,10 @@ function main() {
     const cfgTitle = data && typeof data === 'object' && !Array.isArray(data) && typeof data.officeTitle === 'string'
       ? data.officeTitle.trim()
       : title;
-    writeOut(cfgTitle, fromJson(data));
+    writeOut(cfgTitle, fromJson(data), {
+      subtitle: data && typeof data === 'object' ? data.subtitle : undefined,
+      poster: data && typeof data === 'object' ? data.poster : undefined,
+    });
     return;
   }
 

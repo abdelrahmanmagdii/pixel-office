@@ -11,8 +11,18 @@ on:
         description: 'One bot name per line (first becomes the Chief), or a JSON roster per SCHEMA.md'
         required: true
 
+# contents: write — commit agents.json
+# pages + id-token — deploy GitHub Pages from this run
+# The default GITHUB_TOKEN cannot trigger pages.yml via push, so this
+# workflow builds and deploys the site itself. No personal access token.
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   personalize:
@@ -25,6 +35,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
 
       - name: Generate agents.json
         env:
@@ -41,3 +52,27 @@ jobs:
           git add public/agents.json
           git diff --cached --quiet || git commit -m "Personalize office roster"
           git push
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          BASE_PATH: ./
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: personalize
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

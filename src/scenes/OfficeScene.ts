@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { AgentDef, AgentStatus, OfficeConfig } from '../data/agents';
-import { AGENTS, setOfficeConfig, TASK_POOL } from '../data/agents';
+import { AGENTS, BUILTIN_AGENT_IDS, officePoster, setOfficeConfig, TASK_POOL } from '../data/agents';
 import type { Layout, Seat } from '../data/layout';
 import { planLayout } from '../data/layout';
 import { Agent } from '../entities/Agent';
@@ -20,6 +20,17 @@ import {
   zones,
 } from '../utils/constants';
 import { createAgentAnims, preloadAssets, TILE_FRAME } from '../utils/PixelArt';
+
+/** Built-in ids that sit at a laptop on the Oct 3 floor. Unknown ids hash to one or the other. */
+const LAPTOP_IDS = new Set(['linkedin', 'x', 'reddit', 'travel', 'deal']);
+
+function deskTextureFor(id: string): string {
+  if (LAPTOP_IDS.has(id)) return 'desk-laptop-back';
+  if (BUILTIN_AGENT_IDS.includes(id)) return 'desk-back';
+  let h = 0;
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h % 2 ? 'desk-laptop-back' : 'desk-back';
+}
 
 export type PanelPayload = {
   id: string;
@@ -61,6 +72,7 @@ export class OfficeScene extends Phaser.Scene {
   private clockHands!: Phaser.GameObjects.Graphics;
   private layout!: Layout;
   private deskImages = new Map<string, Phaser.GameObjects.Image>();
+  private chairImages = new Map<string, Phaser.GameObjects.Image>();
   /** Desks from the last layout, so a rebuild doesn't reshuffle people. */
   private keepDesks = new Map<string, Seat>();
 
@@ -83,6 +95,7 @@ export class OfficeScene extends Phaser.Scene {
     this.cosOnFloor = false;
     this.demoMode = false;
     this.deskImages.clear();
+    this.chairImages.clear();
     this.hooks.onSelect(null);
     this.syncCoSButtonLabel();
     this.layout = planLayout(AGENTS, this.keepDesks);
@@ -315,9 +328,9 @@ export class OfficeScene extends Phaser.Scene {
       this.zoneChip(x0 - 1, y0 + 1.45 * TILE, z.label).setOrigin(0.5, 1).setRotation(-Math.PI / 2);
     }
 
-    // STARBASE poster on the north-wall whiteboard
+    // North-wall poster. agents.json `poster` overrides the neutral default.
     this.add
-      .text(14 * TILE + 16, 1 * TILE + 20, '★ STARBASE 2026', {
+      .text(14 * TILE + 16, 1 * TILE + 20, officePoster, {
         fontFamily: 'monospace',
         fontSize: '9px',
         color: '#fbbf24',
@@ -349,29 +362,8 @@ export class OfficeScene extends Phaser.Scene {
         .image(col * TILE + 16, row * TILE + yOff, key)
         .setOrigin(0.5, originY)
         .setDepth(1000 + row + 0.9);
-    const placeDesk = (seatCol: number, seatRow: number, key: string) =>
-      this.add
-        .image(seatCol * TILE + TILE / 2, seatRow * TILE + 4, key)
-        .setOrigin(0.5, 0)
-        .setDepth(1000 + seatRow + 0.5);
-    const placeChair = (seatCol: number, seatRow: number) =>
-      this.add
-        .image(seatCol * TILE + TILE / 2, seatRow * TILE + TILE / 2, 'chair')
-        .setOrigin(0.5, 0.7)
-        .setDepth(1000 + seatRow - 0.5);
-
-    placeDesk(BOSS_DESK.standCol, BOSS_DESK.standRow, 'desk-boss-back');
-
-    for (const d of this.deskSeats()) {
-      placeChair(d.col, d.row);
-      this.deskImages.set(`${d.col},${d.row}`, placeDesk(d.col, d.row, 'desk-empty'));
-    }
+    this.placeDeskImage(BOSS_DESK.standCol, BOSS_DESK.standRow, 'desk-boss-back');
     this.refreshDeskTextures();
-
-    for (const d of EMPTY_DESKS) {
-      placeChair(d.col, d.row);
-      placeDesk(d.col, d.row, d.key === 'desk-empty' ? d.key : `${d.key}-back`);
-    }
 
     // North wall
     prop(4, 1, 'filing-cabinet');
@@ -411,16 +403,49 @@ export class OfficeScene extends Phaser.Scene {
     this.zoneChip(24 * TILE, south(14) * TILE + 14, 'BREAK').setOrigin(0.5, 1).setDepth(1020);
   }
 
-  /** Occupied desks get a screen (laptop for odd-hashed ids); free desks stay bare. */
+  private placeDeskImage(seatCol: number, seatRow: number, key: string): Phaser.GameObjects.Image {
+    return this.add
+      .image(seatCol * TILE + TILE / 2, seatRow * TILE + 4, key)
+      .setOrigin(0.5, 0)
+      .setDepth(1000 + seatRow + 0.5);
+  }
+
+  private placeChairImage(seatCol: number, seatRow: number): Phaser.GameObjects.Image {
+    return this.add
+      .image(seatCol * TILE + TILE / 2, seatRow * TILE + TILE / 2, 'chair')
+      .setOrigin(0.5, 0.7)
+      .setDepth(1000 + seatRow - 0.5);
+  }
+
+  /**
+   * Occupied seats use the Oct 3 laptop set for built-in ids.
+   * Unoccupied filler desks keep their own texture. Seats that are neither are removed.
+   */
   private refreshDeskTextures(): void {
-    const owner = new Map(
-      AGENTS.filter((a) => !a.isChief).map((a) => [`${a.desk.col},${a.desk.row}`, a.id]),
-    );
+    const want = new Map<string, string>();
+    for (const a of AGENTS) {
+      if (a.isChief) continue;
+      want.set(`${a.desk.col},${a.desk.row}`, deskTextureFor(a.id));
+    }
+    for (const d of EMPTY_DESKS) {
+      const k = `${d.col},${d.row}`;
+      if (!want.has(k)) want.set(k, d.key);
+    }
+    for (const [k, texture] of want) {
+      const [col, row] = k.split(',').map(Number);
+      const img = this.deskImages.get(k);
+      if (img) img.setTexture(texture);
+      else {
+        this.deskImages.set(k, this.placeDeskImage(col, row, texture));
+        this.chairImages.set(k, this.placeChairImage(col, row));
+      }
+    }
     for (const [k, img] of this.deskImages) {
-      const id = owner.get(k);
-      let h = 0;
-      for (const ch of id ?? '') h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-      img.setTexture(id === undefined ? 'desk-empty' : h % 2 ? 'desk-laptop-back' : 'desk-back');
+      if (want.has(k)) continue;
+      img.destroy();
+      this.chairImages.get(k)?.destroy();
+      this.deskImages.delete(k);
+      this.chairImages.delete(k);
     }
   }
 
